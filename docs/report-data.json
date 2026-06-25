@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-06-25T00:00:00.000Z",
+  "source": {
+    "shopify": "Not configured",
+    "smile": "CSV files in data/smile"
+  },
+  "monthly": [
+    {
+      "year": 2025,
+      "quarter": "Q4",
+      "month": "2025-12",
+      "total_orders": 0,
+      "orders_with_upsell": 0,
+      "upsell_revenue": 0,
+      "upsell_items": 0,
+      "conversion_rate": 0,
+      "average_upsell_value": 0,
+      "new_members": 0,
+      "total_customer_base": 0,
+      "points_earned": 251995,
+      "points_redeemed": 16000,
+      "redemption_rate": 0.0635,
+      "sales_influenced": 0
+    },
+    {
+      "year": 2026,
+      "quarter": "Q1",
+      "month": "2026-01",
+      "total_orders": 0,
+      "orders_with_upsell": 0,
+      "upsell_revenue": 0,
+      "upsell_items": 0,
+      "conversion_rate": 0,
+      "average_upsell_value": 0,
+      "new_members": 0,
+      "total_customer_base": 0,
+      "points_earned": 85347,
+      "points_redeemed": 3600,
+      "redemption_rate": 0.0422,
+      "sales_influenced": 0
+    },
+    {
+      "year": 2026,
+      "quarter": "Q1",
+      "month": "2026-02",
+      "total_orders": 0,
+      "orders_with_upsell": 0,
+      "upsell_revenue": 0,
+      "upsell_items": 0,
+      "conversion_rate": 0,
+      "average_upsell_value": 0,
+      "new_members": 0,
+      "total_customer_base": 0,
+      "points_earned": 52583,
+      "points_redeemed": 1700,
+      "redemption_rate": 0.0323,
+      "sales_influenced": 0
+    },
+    {
+      "year": 2026,
+      "quarter": "Q1",
+      "month": "2026-03",
+      "total_orders": 0,
+      "orders_with_upsell": 0,
+      "upsell_revenue": 0,
+      "upsell_items": 0,
+      "conversion_rate": 0,
+      "average_upsell_value": 0,
+      "new_members": 0,
+      "total_customer_base": 0,
+      "points_earned": 50632,
+      "points_redeemed": 1300,
+      "redemption_rate": 0.0257,
+      "sales_influenced": 0
+    }
+  ]
+}
