@@ -33,6 +33,15 @@ function normalizeName(value) {
     .trim();
 }
 
+function normalizeHeader(value) {
+  return String(value || "")
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
 function listSmileFiles() {
   if (!fs.existsSync(DATA_DIR)) return [];
 
@@ -100,17 +109,17 @@ function readSmileCsv(kind) {
   const file = findSmileFile(kind);
 
   if (!file) {
-    console.warn(
-      `Smile CSV missing for ${kind}. Available CSV files: ${listSmileFiles().join(", ") || "(none)"}`
-    );
+    console.warn(`Smile CSV missing for ${kind}. Available CSV files: ${listSmileFiles().join(", ") || "(none)"}`);
     return [];
   }
 
   const rows = parseCSV(fs.readFileSync(file, "utf8"));
+
   console.log(`Smile ${kind}: ${path.basename(file)} → ${rows.length} rows`);
 
   if (rows.length) {
     console.log(`Smile ${kind} headers: ${Object.keys(rows[0]).join(" | ")}`);
+    console.log(`Smile ${kind} sample: ${JSON.stringify(rows[0]).slice(0, 500)}`);
   }
 
   return rows;
@@ -170,7 +179,10 @@ function parseCSV(text) {
 
   if (!rows.length) return [];
 
-  const headers = rows[0].map(header => normalizeHeader(header));
+  const headers = normalizeFieldsToExpectedCount(
+    rows[0].map(header => normalizeHeader(header)),
+    rows[0].length
+  );
 
   return rows.slice(1).map(values => {
     const repairedValues = repairSmileRow(values, headers.length);
@@ -186,49 +198,36 @@ function parseCSV(text) {
 
 function repairSmileRow(values, expectedColumnCount) {
   /*
-   * Handles two Smile malformed CSV patterns:
+   * Repairs Smile CSV files exported in strange formats:
    *
-   * Pattern A - rows beginning with a date:
+   * Pattern A:
    * "June 25, 2026,0,""22,699"""
-   * Should become:
-   * ["June 25, 2026", "0", "22,699"]
    *
-   * Pattern B - influenced orders, full row wrapped in quotes:
+   * Pattern B:
    * "Stacey,Ritala,email@example.com,153089,624.83,paid,false,code,false,points_redemption,""May 17, 2026, 12:38 AM"",Member"
+   *
+   * Pattern C:
+   * June 25,2026,0,"22,699"
+   * where the date was split into 2 columns.
    */
-  if (!values || values.length !== 1 || expectedColumnCount <= 1) {
-    return values;
+
+  if (!values || !values.length) return values;
+
+  let repaired = values;
+
+  if (values.length === 1 && expectedColumnCount > 1) {
+    let raw = String(values[0] || "").trim();
+
+    if (raw.startsWith('"') && raw.endsWith('"')) {
+      raw = raw.slice(1, -1);
+    }
+
+    raw = raw.replace(/""/g, '"');
+
+    repaired = parseCsvLine(raw);
   }
 
-  let raw = String(values[0] || "").trim();
-
-  if (!raw) {
-    return values;
-  }
-
-  if (raw.startsWith('"') && raw.endsWith('"')) {
-    raw = raw.slice(1, -1);
-  }
-
-  raw = raw.replace(/""/g, '"');
-
-  // SPECIAL CASE:
-  // Smile metric CSVs start with an unquoted date containing a comma:
-  // June 25, 2026,0,"22,699"
-  // If we parse this normally, it becomes ["June 25", "2026", ...] and breaks.
-  const dateAtStart = raw.match(/^([A-Za-z]+\s+\d{1,2},\s+\d{4}),(.*)$/);
-
-  if (dateAtStart && expectedColumnCount <= 5) {
-    const datePart = dateAtStart[1];
-    const rest = dateAtStart[2];
-    const restFields = parseCsvLine(rest);
-    const repaired = [datePart, ...restFields];
-
-    return repaired.length >= expectedColumnCount ? repaired : values;
-  }
-
-  // Normal malformed row repair for Smile influenced orders.
-  const repaired = parseCsvLine(raw);
+  repaired = normalizeFieldsToExpectedCount(repaired, expectedColumnCount);
 
   return repaired.length >= expectedColumnCount ? repaired : values;
 }
@@ -267,13 +266,47 @@ function parseCsvLine(line) {
   return values.map(value => String(value).trim().replace(/^"|"$/g, ""));
 }
 
-function normalizeHeader(value) {
-  return String(value || "")
-    .replace(/^\uFEFF/, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
+function normalizeFieldsToExpectedCount(fields, expectedColumnCount) {
+  let result = fields.map(value => String(value ?? "").trim());
+
+  /*
+   * Fix date split at the start:
+   * ["June 25", "2026", "0", "22,699"] → ["June 25, 2026", "0", "22,699"]
+   */
+  if (
+    result.length > expectedColumnCount &&
+    result[0] &&
+    result[1] &&
+    /^[A-Za-z]+\s+\d{1,2}$/.test(result[0]) &&
+    /^\d{4}$/.test(result[1])
+  ) {
+    result = [`${result[0]}, ${result[1]}`, ...result.slice(2)];
+  }
+
+  /*
+   * Fix date split later in influenced orders:
+   * [..., "May 17", "2026", "12:38 AM", ...]
+   * Usually already fixed by quotes, but this catches malformed rows.
+   */
+  while (result.length > expectedColumnCount) {
+    let fixed = false;
+
+    for (let i = 0; i < result.length - 1; i++) {
+      if (/^[A-Za-z]+\s+\d{1,2}$/.test(result[i]) && /^\d{4}$/.test(result[i + 1])) {
+        result = [
+          ...result.slice(0, i),
+          `${result[i]}, ${result[i + 1]}`,
+          ...result.slice(i + 2)
+        ];
+        fixed = true;
+        break;
+      }
+    }
+
+    if (!fixed) break;
+  }
+
+  return result;
 }
 
 function getValue(row, aliases) {
@@ -317,6 +350,26 @@ function parseNumber(value) {
 }
 
 function detectSalesValue(row) {
+  const preferredKeys = [
+    "grand total",
+    "total",
+    "order total",
+    "order value",
+    "revenue",
+    "amount",
+    "subtotal",
+    "total price",
+    "amount paid",
+    "total paid"
+  ];
+
+  for (const key of preferredKeys) {
+    const value = getValue(row, [key]);
+    const number = parseNumber(value);
+
+    if (number > 0) return number;
+  }
+
   const ignoredWords = [
     "id",
     "customer",
@@ -494,13 +547,15 @@ function buildSmileMonthly(months) {
           "points earned",
           "earned points",
           "points issued",
-          "points added"
+          "points added",
+          "points accumulated"
         ])),
         points_redeemed: Math.abs(parseNumber(getValue(row, [
           "points redeemed",
           "redeemed points",
           "points spent",
-          "points used"
+          "points used",
+          "points claimed"
         ])))
       });
     }
@@ -510,6 +565,7 @@ function buildSmileMonthly(months) {
     for (const row of transactionRows) {
       const date = getValue(row, ["date", "created at", "processed at", "completed at"]);
       const month = monthKeyFromDate(date);
+
       const points = parseNumber(getValue(row, [
         "points change",
         "points changed",
@@ -527,6 +583,7 @@ function buildSmileMonthly(months) {
     for (const row of redemptionRows) {
       const date = getValue(row, ["date", "created at", "redeemed at", "processed at", "completed at"]);
       const month = monthKeyFromDate(date);
+
       const points = Math.abs(parseNumber(getValue(row, [
         "points redeemed",
         "redeemed points",
@@ -542,10 +599,6 @@ function buildSmileMonthly(months) {
   }
 
   const influencedRows = readSmileCsv("influencedOrders");
-
-  if (influencedRows.length) {
-    console.log("Influenced orders headers:", Object.keys(influencedRows[0]).join(" | "));
-  }
 
   for (const row of influencedRows) {
     const date = getValue(row, [
@@ -808,9 +861,7 @@ async function buildShopifyMonthly(months) {
 
     Object.assign(months[monthKey], metrics);
 
-    console.log(
-      `${monthKey}: orders=${metrics.total_orders}, upsell orders=${metrics.orders_with_upsell}, revenue=${metrics.upsell_revenue}`
-    );
+    console.log(`${monthKey}: orders=${metrics.total_orders}, upsell orders=${metrics.orders_with_upsell}, revenue=${metrics.upsell_revenue}`);
   }
 }
 
