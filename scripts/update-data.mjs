@@ -35,13 +35,15 @@ function normalizeName(value) {
 
 function listSmileFiles() {
   if (!fs.existsSync(DATA_DIR)) return [];
+
   return fs.readdirSync(DATA_DIR)
-    .filter(f => f.toLowerCase().endsWith(".csv"))
+    .filter(file => file.toLowerCase().endsWith(".csv"))
     .sort();
 }
 
 function findSmileFile(kind) {
   const files = listSmileFiles();
+
   const rules = {
     customers: [
       ["customer"]
@@ -70,13 +72,22 @@ function findSmileFile(kind) {
     ],
     redemptionRate: [
       ["redemption", "rate", "over", "time"]
+    ],
+    outstandingPoints: [
+      ["outstanding", "points", "over", "time"]
+    ],
+    vipTierChanges: [
+      ["vip", "tier", "changes"]
+    ],
+    vipTierMembers: [
+      ["vip", "tier", "members", "over", "time"]
     ]
   };
 
   for (const rule of rules[kind] || []) {
     const match = files.find(file => {
-      const n = normalizeName(file);
-      return rule.every(token => n.includes(token));
+      const normalized = normalizeName(file);
+      return rule.every(token => normalized.includes(token));
     });
 
     if (match) return path.join(DATA_DIR, match);
@@ -87,13 +98,21 @@ function findSmileFile(kind) {
 
 function readSmileCsv(kind) {
   const file = findSmileFile(kind);
+
   if (!file) {
-    console.warn(`Smile CSV missing for ${kind}. Available CSV files: ${listSmileFiles().join(", ") || "(none)"}`);
+    console.warn(
+      `Smile CSV missing for ${kind}. Available CSV files: ${listSmileFiles().join(", ") || "(none)"}`
+    );
     return [];
   }
 
   const rows = parseCSV(fs.readFileSync(file, "utf8"));
   console.log(`Smile ${kind}: ${path.basename(file)} → ${rows.length} rows`);
+
+  if (rows.length) {
+    console.log(`Smile ${kind} headers: ${Object.keys(rows[0]).join(" | ")}`);
+  }
+
   return rows;
 }
 
@@ -128,9 +147,14 @@ function parseCSV(text) {
 
     if ((char === "\n" || char === "\r") && !inQuotes) {
       if (char === "\r" && next === "\n") i++;
+
       row.push(field);
       field = "";
-      if (row.some(v => String(v).trim() !== "")) rows.push(row);
+
+      if (row.some(value => String(value).trim() !== "")) {
+        rows.push(row);
+      }
+
       row = [];
       continue;
     }
@@ -139,48 +163,57 @@ function parseCSV(text) {
   }
 
   row.push(field);
-  if (row.some(v => String(v).trim() !== "")) rows.push(row);
+
+  if (row.some(value => String(value).trim() !== "")) {
+    rows.push(row);
+  }
 
   if (!rows.length) return [];
 
-  const headers = rows[0].map(h => normalizeHeader(h));
+  const headers = rows[0].map(header => normalizeHeader(header));
 
   return rows.slice(1).map(values => {
     const repairedValues = repairSmileRow(values, headers.length);
 
     const obj = {};
-    headers.forEach((h, i) => {
-      obj[h] = repairedValues[i] ?? "";
+    headers.forEach((header, index) => {
+      obj[header] = repairedValues[index] ?? "";
     });
+
     return obj;
   });
 }
 
 function repairSmileRow(values, expectedColumnCount) {
   /*
-   * Some Smile CSV exports come malformed like this:
+   * Some Smile CSV exports come malformed with the entire row wrapped in quotes.
+   *
+   * Example 1:
    * "June 25, 2026,0,""22,699"""
    *
-   * Standard CSV parsing treats that entire row as ONE field because the whole row
-   * is wrapped in quotes. This function repairs those rows into:
-   * ["June 25, 2026", "0", "22,699"]
+   * Example 2:
+   * "Stacey,Ritala,email@example.com,153089,624.83,paid,false,code,false,points_redemption,""May 17, 2026, 12:38 AM"",Member"
+   *
+   * This repairs the row by removing the outside quotes, restoring inner quotes,
+   * and parsing the row again as CSV.
    */
   if (!values || values.length !== 1 || expectedColumnCount <= 1) {
     return values;
   }
 
-  const raw = String(values[0] || "").trim();
+  let raw = String(values[0] || "").trim();
 
-  const dateMatch = raw.match(/^([A-Za-z]+\s+\d{1,2},\s+\d{4}),(.*)$/);
-  if (!dateMatch) {
+  if (!raw) {
     return values;
   }
 
-  const datePart = dateMatch[1];
-  const rest = dateMatch[2];
+  if (raw.startsWith('"') && raw.endsWith('"')) {
+    raw = raw.slice(1, -1);
+  }
 
-  const restFields = parseCsvLine(rest);
-  const repaired = [datePart, ...restFields];
+  raw = raw.replace(/""/g, '"');
+
+  const repaired = parseCsvLine(raw);
 
   return repaired.length >= expectedColumnCount ? repaired : values;
 }
@@ -216,7 +249,7 @@ function parseCsvLine(line) {
 
   values.push(field);
 
-  return values.map(v => String(v).trim().replace(/^"|"$/g, ""));
+  return values.map(value => String(value).trim().replace(/^"|"$/g, ""));
 }
 
 function normalizeHeader(value) {
@@ -231,40 +264,110 @@ function normalizeHeader(value) {
 function getValue(row, aliases) {
   for (const alias of aliases) {
     const key = normalizeHeader(alias);
+
     if (row[key] !== undefined && String(row[key]).trim() !== "") {
       return row[key];
     }
   }
+
+  const rowKeys = Object.keys(row);
+
+  for (const alias of aliases) {
+    const key = normalizeHeader(alias);
+
+    const match = rowKeys.find(rowKey => {
+      const normalizedRowKey = normalizeHeader(rowKey);
+      return normalizedRowKey.includes(key) || key.includes(normalizedRowKey);
+    });
+
+    if (match && row[match] !== undefined && String(row[match]).trim() !== "") {
+      return row[match];
+    }
+  }
+
   return "";
 }
 
 function parseNumber(value) {
   if (value === null || value === undefined || value === "") return 0;
+
   const text = String(value)
     .replace(/[$,%]/g, "")
     .replace(/,/g, "")
     .replace(/points/gi, "")
     .trim();
-  const n = Number(text);
-  return Number.isFinite(n) ? n : 0;
+
+  const number = Number(text);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function detectSalesValue(row) {
+  const ignoredWords = [
+    "id",
+    "customer",
+    "email",
+    "phone",
+    "points",
+    "discount",
+    "code",
+    "referral",
+    "url",
+    "date",
+    "time",
+    "name",
+    "order number",
+    "status",
+    "membership"
+  ];
+
+  let best = 0;
+
+  for (const [key, value] of Object.entries(row)) {
+    const normalizedKey = normalizeHeader(key);
+    const shouldIgnore = ignoredWords.some(word => normalizedKey.includes(word));
+
+    if (shouldIgnore) continue;
+
+    const raw = String(value || "").trim();
+    if (!raw) continue;
+
+    const looksLikeMoney =
+      raw.includes("$") ||
+      raw.includes(".") ||
+      raw.match(/^\d{1,3}(,\d{3})+(\.\d+)?$/) ||
+      raw.match(/^\d+(\.\d+)?$/);
+
+    if (!looksLikeMoney) continue;
+
+    const number = parseNumber(raw);
+
+    if (number > best && number < 100000) {
+      best = number;
+    }
+  }
+
+  return best;
 }
 
 function parseDate(value) {
   if (!value) return null;
+
   const text = String(value).trim();
-  const d = new Date(text);
-  return Number.isNaN(d.getTime()) ? null : d;
+  const date = new Date(text);
+
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function monthKeyFromDate(value) {
-  const d = parseDate(value);
-  if (!d) return "";
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  const date = parseDate(value);
+  if (!date) return "";
+
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function dateStamp(value) {
-  const d = parseDate(value);
-  return d ? d.getTime() : 0;
+  const date = parseDate(value);
+  return date ? date.getTime() : 0;
 }
 
 function quarterFromMonth(monthNumber) {
@@ -281,9 +384,11 @@ function createMonthSkeleton() {
   for (let year = START_YEAR; year <= endYear; year++) {
     for (let month = 1; month <= 12; month++) {
       const first = new Date(Date.UTC(year, month - 1, 1));
+
       if (first > CURRENT_DATE) continue;
 
       const key = `${year}-${String(month).padStart(2, "0")}`;
+
       months[key] = {
         year,
         quarter: quarterFromMonth(month),
@@ -311,6 +416,7 @@ function createMonthSkeleton() {
 
 function addToMonth(months, month, values) {
   if (!month || !months[month]) return;
+
   for (const [key, value] of Object.entries(values)) {
     months[month][key] = (Number(months[month][key]) || 0) + (Number(value) || 0);
   }
@@ -318,9 +424,12 @@ function addToMonth(months, month, values) {
 
 function setLatestInMonth(months, month, stampKey, stamp, values) {
   if (!month || !months[month]) return;
+
   const currentStamp = months[month][stampKey] || 0;
+
   if (stamp >= currentStamp) {
     months[month][stampKey] = stamp;
+
     for (const [key, value] of Object.entries(values)) {
       months[month][key] = value;
     }
@@ -329,9 +438,11 @@ function setLatestInMonth(months, month, stampKey, stamp, values) {
 
 function buildSmileMonthly(months) {
   const totalMembersRows = readSmileCsv("totalMembers");
+
   for (const row of totalMembersRows) {
     const date = getValue(row, ["date", "day", "month", "period"]);
     const month = monthKeyFromDate(date);
+
     if (!month || !months[month]) continue;
 
     addToMonth(months, month, {
@@ -355,10 +466,12 @@ function buildSmileMonthly(months) {
   }
 
   const pointsActivityRows = readSmileCsv("pointsActivity");
+
   if (pointsActivityRows.length) {
     for (const row of pointsActivityRows) {
       const date = getValue(row, ["date", "day", "month", "period"]);
       const month = monthKeyFromDate(date);
+
       if (!month || !months[month]) continue;
 
       addToMonth(months, month, {
@@ -378,6 +491,7 @@ function buildSmileMonthly(months) {
     }
   } else {
     const transactionRows = readSmileCsv("pointTransactions");
+
     for (const row of transactionRows) {
       const date = getValue(row, ["date", "created at", "processed at", "completed at"]);
       const month = monthKeyFromDate(date);
@@ -388,10 +502,13 @@ function buildSmileMonthly(months) {
         "amount"
       ]));
 
-      if (points > 0) addToMonth(months, month, { points_earned: points });
+      if (points > 0) {
+        addToMonth(months, month, { points_earned: points });
+      }
     }
 
     const redemptionRows = readSmileCsv("pointRedemptions");
+
     for (const row of redemptionRows) {
       const date = getValue(row, ["date", "created at", "redeemed at", "processed at", "completed at"]);
       const month = monthKeyFromDate(date);
@@ -403,39 +520,67 @@ function buildSmileMonthly(months) {
         "amount"
       ])));
 
-      if (points > 0) addToMonth(months, month, { points_redeemed: points });
+      if (points > 0) {
+        addToMonth(months, month, { points_redeemed: points });
+      }
     }
   }
 
   const influencedRows = readSmileCsv("influencedOrders");
+
+  if (influencedRows.length) {
+    console.log("Influenced orders headers:", Object.keys(influencedRows[0]).join(" | "));
+  }
+
   for (const row of influencedRows) {
     const date = getValue(row, [
       "placed at",
       "date",
       "created at",
       "order date",
-      "processed at"
+      "processed at",
+      "completed at",
+      "order placed at",
+      "ordered at"
     ]);
+
     const month = monthKeyFromDate(date);
 
-    const sales = parseNumber(getValue(row, [
+    let sales = parseNumber(getValue(row, [
       "grand total",
       "total",
       "order total",
+      "order total amount",
+      "total order value",
+      "order value",
       "revenue",
+      "sales",
       "amount",
       "subtotal",
-      "total price"
+      "total price",
+      "price",
+      "paid",
+      "amount paid",
+      "total paid"
     ]));
 
-    if (sales) addToMonth(months, month, { sales_influenced: sales });
+    if (!sales) {
+      sales = detectSalesValue(row);
+    }
+
+    if (month && sales) {
+      addToMonth(months, month, {
+        sales_influenced: sales
+      });
+    }
   }
 
   const customersRows = readSmileCsv("customers");
+
   if (customersRows.length) {
     const totalCustomers = customersRows.length;
-    const lastMonth = Object.keys(months).sort().filter(k => k >= "2026-01").at(-1);
-    const hasAnyBase = Object.values(months).some(r => Number(r.total_customer_base || 0) > 0);
+    const lastMonth = Object.keys(months).sort().filter(key => key >= "2026-01").at(-1);
+    const hasAnyBase = Object.values(months).some(row => Number(row.total_customer_base || 0) > 0);
 
     if (!hasAnyBase && lastMonth && months[lastMonth]) {
       months[lastMonth].total_customer_base = totalCustomers;
@@ -451,8 +596,12 @@ function buildSmileMonthly(months) {
         "joined at",
         "created at"
       ]);
+
       const month = monthKeyFromDate(date);
-      if (month && months[month]) addToMonth(months, month, { new_members: 1 });
+
+      if (month && months[month]) {
+        addToMonth(months, month, { new_members: 1 });
+      }
     }
   }
 
@@ -464,8 +613,10 @@ function buildSmileMonthly(months) {
 
 function getMonthRange(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
+
   const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
   const end = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+
   return {
     startIso: start.toISOString(),
     endIso: end.toISOString()
@@ -474,18 +625,21 @@ function getMonthRange(monthKey) {
 
 function nextPageInfoFromLink(linkHeader) {
   if (!linkHeader) return "";
+
   const parts = String(linkHeader).split(",");
+
   for (const part of parts) {
     if (part.includes('rel="next"')) {
       const match = part.match(/[?&]page_info=([^&>]+)/);
       if (match) return decodeURIComponent(match[1]);
     }
   }
+
   return "";
 }
 
 async function shopifyFetchJson(url) {
-  const res = await fetch(url, {
+  const response = await fetch(url, {
     method: "GET",
     headers: {
       "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
@@ -493,18 +647,20 @@ async function shopifyFetchJson(url) {
     }
   });
 
-  const body = await res.text();
+  const body = await response.text();
 
-  if (!res.ok) throw new Error(`Shopify API ${res.status}: ${body}`);
+  if (!response.ok) {
+    throw new Error(`Shopify API ${response.status}: ${body}`);
+  }
 
   return {
     json: JSON.parse(body),
-    link: res.headers.get("link") || ""
+    link: response.headers.get("link") || ""
   };
 }
 
-function propertyToText(p) {
-  return `${p.name || p.key || ""}:${p.value || ""}`;
+function propertyToText(property) {
+  return `${property.name || property.key || ""}:${property.value || ""}`;
 }
 
 function isUpsellLineItem(item, order) {
@@ -512,9 +668,10 @@ function isUpsellLineItem(item, order) {
 
   const properties = item.properties || item.customAttributes || [];
   const noteAttributes = order.note_attributes || order.customAttributes || [];
+
   const orderTags = String(order.tags || "")
     .split(",")
-    .map(t => t.trim())
+    .map(tag => tag.trim())
     .filter(Boolean);
 
   const text = [
@@ -553,7 +710,9 @@ function calculateShopifyMetrics(orders) {
       }
     }
 
-    if (hasUpsell) ordersWithUpsell += 1;
+    if (hasUpsell) {
+      ordersWithUpsell += 1;
+    }
   }
 
   return {
@@ -572,6 +731,7 @@ function roundMoney(value) {
 
 async function fetchShopifyOrdersForMonth(monthKey) {
   const { startIso, endIso } = getMonthRange(monthKey);
+
   const fields = [
     "id",
     "name",
@@ -594,9 +754,11 @@ async function fetchShopifyOrdersForMonth(monthKey) {
 
   while (url) {
     const { json, link } = await shopifyFetchJson(url);
+
     orders = orders.concat(json.orders || []);
 
     const next = nextPageInfoFromLink(link);
+
     if (next) {
       url =
         `https://${SHOPIFY_STORE}/admin/api/${SHOPIFY_API_VERSION}/orders.json` +
@@ -606,7 +768,10 @@ async function fetchShopifyOrdersForMonth(monthKey) {
     }
 
     safety += 1;
-    if (safety > 100) throw new Error(`Too many Shopify pages for ${monthKey}`);
+
+    if (safety > 100) {
+      throw new Error(`Too many Shopify pages for ${monthKey}`);
+    }
   }
 
   return orders;
@@ -622,10 +787,15 @@ async function buildShopifyMonthly(months) {
 
   for (const monthKey of keys) {
     console.log(`Fetching Shopify ${monthKey}...`);
+
     const orders = await fetchShopifyOrdersForMonth(monthKey);
     const metrics = calculateShopifyMetrics(orders);
+
     Object.assign(months[monthKey], metrics);
-    console.log(`${monthKey}: orders=${metrics.total_orders}, upsell orders=${metrics.orders_with_upsell}, revenue=${metrics.upsell_revenue}`);
+
+    console.log(
+      `${monthKey}: orders=${metrics.total_orders}, upsell orders=${metrics.orders_with_upsell}, revenue=${metrics.upsell_revenue}`
+    );
   }
 }
 
@@ -651,10 +821,11 @@ async function main() {
   };
 
   fs.writeFileSync(OUT_FILE, JSON.stringify(report, null, 2), "utf8");
+
   console.log(`Wrote ${OUT_FILE}`);
 }
 
-main().catch(err => {
-  console.error(err);
+main().catch(error => {
+  console.error(error);
   process.exit(1);
 });
