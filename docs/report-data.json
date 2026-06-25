@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-25T05:54:17.281Z",
+  "generatedAt": "2026-06-25T05:58:50.634Z",
   "source": {
     "shopify": "Shopify Admin API",
     "smile": "CSV files in data/smile"
@@ -151,8 +151,8 @@
       "upsell_items": 58,
       "conversion_rate": 0.06403940886699508,
       "average_upsell_value": 19.921034482758625,
-      "new_members": 41624,
-      "total_customer_base": 20813,
+      "new_members": 20811,
+      "total_customer_base": 0,
       "points_earned": 0,
       "points_redeemed": 0,
       "redemption_rate": 0,
@@ -168,12 +168,12 @@
       "upsell_items": 55,
       "conversion_rate": 0.06050955414012739,
       "average_upsell_value": 37.30018181818182,
-      "new_members": 342,
-      "total_customer_base": 20984,
-      "points_earned": 143814,
-      "points_redeemed": 3600,
-      "redemption_rate": 0.025032333430681297,
-      "sales_influenced": 0
+      "new_members": 171,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 345.32
     },
     {
       "year": 2025,
@@ -185,12 +185,12 @@
       "upsell_items": 49,
       "conversion_rate": 0.053549190535491904,
       "average_upsell_value": 32.88551020408163,
-      "new_members": 658,
-      "total_customer_base": 21313,
-      "points_earned": 451156,
-      "points_redeemed": 7600,
-      "redemption_rate": 0.016845614377288567,
-      "sales_influenced": 0
+      "new_members": 329,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 541.9300000000001
     },
     {
       "year": 2025,
@@ -202,12 +202,12 @@
       "upsell_items": 49,
       "conversion_rate": 0.04609929078014184,
       "average_upsell_value": 40.09510204081633,
-      "new_members": 590,
-      "total_customer_base": 21608,
-      "points_earned": 251995,
-      "points_redeemed": 16000,
-      "redemption_rate": 0.06349332328022382,
-      "sales_influenced": 0
+      "new_members": 295,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 1074.19
     },
     {
       "year": 2026,
@@ -219,12 +219,12 @@
       "upsell_items": 24,
       "conversion_rate": 0.03231017770597738,
       "average_upsell_value": 63.318750000000016,
-      "new_members": 611,
-      "total_customer_base": 21925,
-      "points_earned": 85347,
-      "points_redeemed": 3600,
-      "redemption_rate": 0.042180744490140254,
-      "sales_influenced": 0
+      "new_members": 294,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 561.14
     },
     {
       "year": 2026,
@@ -236,12 +236,12 @@
       "upsell_items": 20,
       "conversion_rate": 0.04,
       "average_upsell_value": 46.25500000000001,
-      "new_members": 252,
-      "total_customer_base": 22063,
-      "points_earned": 52583,
-      "points_redeemed": 1700,
-      "redemption_rate": 0.03232984044272864,
-      "sales_influenced": 0
+      "new_members": 114,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 63.68
     },
     {
       "year": 2026,
@@ -253,12 +253,12 @@
       "upsell_items": 19,
       "conversion_rate": 0.04844290657439446,
       "average_upsell_value": 53.69894736842107,
-      "new_members": 186,
-      "total_customer_base": 22168,
-      "points_earned": 50632,
-      "points_redeemed": 1300,
-      "redemption_rate": 0.02567546215831885,
-      "sales_influenced": 0
+      "new_members": 81,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 281.11
     },
     {
       "year": 2026,
@@ -270,12 +270,12 @@
       "upsell_items": 25,
       "conversion_rate": 0.03837471783295711,
       "average_upsell_value": 53.9752,
-      "new_members": 323,
-      "total_customer_base": 22334,
-      "points_earned": 63672,
-      "points_redeemed": 400,
-      "redemption_rate": 0.0062821962558110315,
-      "sales_influenced": 0
+      "new_members": 157,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 309.98
     },
     {
       "year": 2026,
@@ -287,12 +287,12 @@
       "upsell_items": 30,
       "conversion_rate": 0.040152963671128104,
       "average_upsell_value": 44.592,
-      "new_members": 438,
-      "total_customer_base": 22553,
-      "points_earned": 50639,
-      "points_redeemed": 1700,
-      "redemption_rate": 0.03357096309168822,
-      "sales_influenced": 0
+      "new_members": 219,
+      "total_customer_base": 0,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 795.3900000000001
     },
     {
       "year": 2026,
@@ -304,12 +304,13 @@
       "upsell_items": 11,
       "conversion_rate": 0.023952095808383235,
       "average_upsell_value": 16.707272727272727,
-      "new_members": 278,
-      "total_customer_base": 22699,
-      "points_earned": 37994,
-      "points_redeemed": 2000,
-      "redemption_rate": 0.05263989050902774,
-      "sales_influenced": 0
+      "new_members": 132,
+      "total_customer_base": 22603,
+      "points_earned": 0,
+      "points_redeemed": 0,
+      "redemption_rate": 0,
+      "sales_influenced": 0,
+      "__base_fallback": true
     }
   ]
 }
