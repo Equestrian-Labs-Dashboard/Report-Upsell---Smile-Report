@@ -6,26 +6,100 @@ const DATA_DIR = path.join(ROOT, "data", "smile");
 const DOCS_DIR = path.join(ROOT, "docs");
 const OUT_FILE = path.join(DOCS_DIR, "report-data.json");
 
-const SHOPIFY_STORE = process.env.SHOPIFY_STORE || "";
-const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || "";
-const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-04";
-const UPSELL_IDENTIFIER = process.env.UPSELL_IDENTIFIER || "__eliteCartUpsell";
+const SHOPIFY_STORE = cleanStore(process.env.SHOPIFY_STORE || "");
+const SHOPIFY_ACCESS_TOKEN = String(process.env.SHOPIFY_ACCESS_TOKEN || "").trim();
+const SHOPIFY_API_VERSION = String(process.env.SHOPIFY_API_VERSION || "2026-04").trim();
+const UPSELL_IDENTIFIER = String(process.env.UPSELL_IDENTIFIER || "__eliteCartUpsell").trim();
 
-const START_YEAR = 2025; // Needed for 2026 YoY comparisons.
+const START_YEAR = 2025;
 const CURRENT_DATE = new Date();
+
+function cleanStore(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "");
+}
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function readFileIfExists(filePath) {
-  return fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+function normalizeName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function listSmileFiles() {
+  if (!fs.existsSync(DATA_DIR)) return [];
+  return fs.readdirSync(DATA_DIR)
+    .filter(f => f.toLowerCase().endsWith(".csv"))
+    .sort();
+}
+
+function findSmileFile(kind) {
+  const files = listSmileFiles();
+  const rules = {
+    customers: [
+      ["customer"]
+    ],
+    totalMembers: [
+      ["total", "members", "over", "time"],
+      ["members", "over", "time"],
+      ["total members"]
+    ],
+    pointsActivity: [
+      ["points", "activity", "over", "time"],
+      ["point", "activity", "over", "time"]
+    ],
+    pointTransactions: [
+      ["points", "transactions"],
+      ["point", "transactions"]
+    ],
+    pointRedemptions: [
+      ["points", "redemptions"],
+      ["point", "redemptions"],
+      ["redemptions"]
+    ],
+    influencedOrders: [
+      ["smile", "influenced", "orders"],
+      ["influenced", "orders"]
+    ],
+    redemptionRate: [
+      ["redemption", "rate", "over", "time"]
+    ]
+  };
+
+  for (const rule of rules[kind] || []) {
+    const match = files.find(file => {
+      const n = normalizeName(file);
+      return rule.every(token => n.includes(token));
+    });
+
+    if (match) return path.join(DATA_DIR, match);
+  }
+
+  return "";
+}
+
+function readSmileCsv(kind) {
+  const file = findSmileFile(kind);
+  if (!file) {
+    console.warn(`Smile CSV missing for ${kind}. Available CSV files: ${listSmileFiles().join(", ") || "(none)"}`);
+    return [];
+  }
+
+  const rows = parseCSV(fs.readFileSync(file, "utf8"));
+  console.log(`Smile ${kind}: ${path.basename(file)} → ${rows.length} rows`);
+  return rows;
 }
 
 function parseCSV(text) {
   if (!text || !text.trim()) return [];
 
-  // Handles commas, quotes, escaped quotes, and newlines inside quoted fields.
   const rows = [];
   let row = [];
   let field = "";
@@ -84,7 +158,18 @@ function normalizeHeader(value) {
     .replace(/^\uFEFF/, "")
     .trim()
     .toLowerCase()
+    .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ");
+}
+
+function getValue(row, aliases) {
+  for (const alias of aliases) {
+    const key = normalizeHeader(alias);
+    if (row[key] !== undefined && String(row[key]).trim() !== "") {
+      return row[key];
+    }
+  }
+  return "";
 }
 
 function parseNumber(value) {
@@ -111,6 +196,11 @@ function monthKeyFromDate(value) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+function dateStamp(value) {
+  const d = parseDate(value);
+  return d ? d.getTime() : 0;
+}
+
 function quarterFromMonth(monthNumber) {
   if (monthNumber <= 3) return "Q1";
   if (monthNumber <= 6) return "Q2";
@@ -133,7 +223,6 @@ function createMonthSkeleton() {
         quarter: quarterFromMonth(month),
         month: key,
 
-        // Shopify
         total_orders: 0,
         orders_with_upsell: 0,
         upsell_revenue: 0,
@@ -141,7 +230,6 @@ function createMonthSkeleton() {
         conversion_rate: 0,
         average_upsell_value: 0,
 
-        // Smile
         new_members: 0,
         total_customer_base: 0,
         points_earned: 0,
@@ -162,77 +250,148 @@ function addToMonth(months, month, values) {
   }
 }
 
-function setMonth(months, month, values) {
+function setLatestInMonth(months, month, stampKey, stamp, values) {
   if (!month || !months[month]) return;
-  for (const [key, value] of Object.entries(values)) {
-    months[month][key] = value;
+  const currentStamp = months[month][stampKey] || 0;
+  if (stamp >= currentStamp) {
+    months[month][stampKey] = stamp;
+    for (const [key, value] of Object.entries(values)) {
+      months[month][key] = value;
+    }
   }
-}
-
-function loadSmileCsv(name) {
-  const filePath = path.join(DATA_DIR, name);
-  return parseCSV(readFileIfExists(filePath));
 }
 
 function buildSmileMonthly(months) {
-  const totalMembersRows = loadSmileCsv("smile_total_members_over_time.csv");
+  const totalMembersRows = readSmileCsv("totalMembers");
   for (const row of totalMembersRows) {
-    const month = monthKeyFromDate(row["date"]);
+    const date = getValue(row, ["date", "day", "month", "period"]);
+    const month = monthKeyFromDate(date);
+    if (!month || !months[month]) continue;
+
     addToMonth(months, month, {
-      new_members: parseNumber(row["new members added"])
+      new_members: parseNumber(getValue(row, [
+        "new members added",
+        "new members",
+        "members added",
+        "members"
+      ]))
     });
 
-    // Keep the latest cumulative members value in each month.
-    const date = parseDate(row["date"]);
-    if (month && months[month]) {
-      const stampKey = "__total_members_stamp";
-      const currentStamp = months[month][stampKey] || 0;
-      const stamp = date ? date.getTime() : 0;
-      if (stamp >= currentStamp) {
-        months[month][stampKey] = stamp;
-        months[month].total_customer_base = parseNumber(row["cumulative members"]);
-      }
-    }
-  }
-
-  const pointsActivityRows = loadSmileCsv("smile_points_activity_over_time.csv");
-  for (const row of pointsActivityRows) {
-    const month = monthKeyFromDate(row["date"]);
-    setMonth(months, month, {
-      points_earned: parseNumber(row["points earned"]),
-      points_redeemed: Math.abs(parseNumber(row["points redeemed"]))
+    setLatestInMonth(months, month, "__total_members_stamp", dateStamp(date), {
+      total_customer_base: parseNumber(getValue(row, [
+        "cumulative members",
+        "total members",
+        "members total",
+        "total customer base",
+        "value"
+      ]))
     });
   }
 
-  // Fallbacks if points activity report is missing.
-  const transactionsRows = loadSmileCsv("smile_points_transactions.csv");
-  for (const row of transactionsRows) {
-    const month = monthKeyFromDate(row["date"]);
-    const type = String(row["type"] || "").toLowerCase();
-    const points = parseNumber(row["points change"]);
-    if (type.includes("earned") && points > 0 && months[month] && !months[month].points_earned) {
-      addToMonth(months, month, { points_earned: points });
+  const pointsActivityRows = readSmileCsv("pointsActivity");
+  if (pointsActivityRows.length) {
+    for (const row of pointsActivityRows) {
+      const date = getValue(row, ["date", "day", "month", "period"]);
+      const month = monthKeyFromDate(date);
+      if (!month || !months[month]) continue;
+
+      addToMonth(months, month, {
+        points_earned: parseNumber(getValue(row, [
+          "points earned",
+          "earned points",
+          "points issued",
+          "points added"
+        ])),
+        points_redeemed: Math.abs(parseNumber(getValue(row, [
+          "points redeemed",
+          "redeemed points",
+          "points spent",
+          "points used"
+        ])))
+      });
+    }
+  } else {
+    const transactionRows = readSmileCsv("pointTransactions");
+    for (const row of transactionRows) {
+      const date = getValue(row, ["date", "created at", "processed at", "completed at"]);
+      const month = monthKeyFromDate(date);
+      const points = parseNumber(getValue(row, [
+        "points change",
+        "points changed",
+        "points",
+        "amount"
+      ]));
+
+      if (points > 0) addToMonth(months, month, { points_earned: points });
+    }
+
+    const redemptionRows = readSmileCsv("pointRedemptions");
+    for (const row of redemptionRows) {
+      const date = getValue(row, ["date", "created at", "redeemed at", "processed at", "completed at"]);
+      const month = monthKeyFromDate(date);
+      const points = Math.abs(parseNumber(getValue(row, [
+        "points redeemed",
+        "redeemed points",
+        "points spent",
+        "points",
+        "amount"
+      ])));
+
+      if (points > 0) addToMonth(months, month, { points_redeemed: points });
     }
   }
 
-  const redemptionsRows = loadSmileCsv("smile_points_redemptions.csv");
-  for (const row of redemptionsRows) {
-    const month = monthKeyFromDate(row["date"]);
-    const points = Math.abs(parseNumber(row["points redeemed"]));
-    if (points && months[month] && !months[month].points_redeemed) {
-      addToMonth(months, month, { points_redeemed: points });
-    }
-  }
-
-  const influencedRows = loadSmileCsv("smile_influenced_orders.csv");
+  const influencedRows = readSmileCsv("influencedOrders");
   for (const row of influencedRows) {
-    const month = monthKeyFromDate(row["placed at"] || row["date"] || row["created at"]);
-    addToMonth(months, month, {
-      sales_influenced: parseNumber(row["grand total"] || row["total"] || row["order total"])
-    });
+    const date = getValue(row, [
+      "placed at",
+      "date",
+      "created at",
+      "order date",
+      "processed at"
+    ]);
+    const month = monthKeyFromDate(date);
+
+    const sales = parseNumber(getValue(row, [
+      "grand total",
+      "total",
+      "order total",
+      "revenue",
+      "amount",
+      "subtotal",
+      "total price"
+    ]));
+
+    if (sales) addToMonth(months, month, { sales_influenced: sales });
   }
 
-  // Compute redemption rate after points have been loaded.
+  // If total members report is missing but customers exists, use a fallback total base.
+  // New members still require a membership/date field; if missing, they stay 0.
+  const customersRows = readSmileCsv("customers");
+  if (customersRows.length) {
+    const totalCustomers = customersRows.length;
+    const lastMonth = Object.keys(months).sort().filter(k => k >= "2026-01").at(-1);
+    const hasAnyBase = Object.values(months).some(r => Number(r.total_customer_base || 0) > 0);
+
+    if (!hasAnyBase && lastMonth && months[lastMonth]) {
+      months[lastMonth].total_customer_base = totalCustomers;
+      months[lastMonth].__base_fallback = true;
+    }
+
+    for (const row of customersRows) {
+      const date = getValue(row, [
+        "became member",
+        "became member at",
+        "membership date",
+        "member since",
+        "joined at",
+        "created at"
+      ]);
+      const month = monthKeyFromDate(date);
+      if (month && months[month]) addToMonth(months, month, { new_members: 1 });
+    }
+  }
+
   for (const row of Object.values(months)) {
     row.redemption_rate = row.points_earned ? row.points_redeemed / row.points_earned : 0;
     delete row.__total_members_stamp;
@@ -272,9 +431,7 @@ async function shopifyFetchJson(url) {
 
   const body = await res.text();
 
-  if (!res.ok) {
-    throw new Error(`Shopify API ${res.status}: ${body}`);
-  }
+  if (!res.ok) throw new Error(`Shopify API ${res.status}: ${body}`);
 
   return {
     json: JSON.parse(body),
@@ -282,11 +439,15 @@ async function shopifyFetchJson(url) {
   };
 }
 
+function propertyToText(p) {
+  return `${p.name || p.key || ""}:${p.value || ""}`;
+}
+
 function isUpsellLineItem(item, order) {
   const identifier = UPSELL_IDENTIFIER.toLowerCase();
 
-  const properties = item.properties || [];
-  const noteAttributes = order.note_attributes || [];
+  const properties = item.properties || item.customAttributes || [];
+  const noteAttributes = order.note_attributes || order.customAttributes || [];
   const orderTags = String(order.tags || "")
     .split(",")
     .map(t => t.trim())
@@ -294,11 +455,12 @@ function isUpsellLineItem(item, order) {
 
   const text = [
     item.title || "",
+    item.name || "",
     item.sku || "",
     item.vendor || "",
     ...orderTags,
-    ...properties.map(p => `${p.name || ""}:${p.value || ""}`),
-    ...noteAttributes.map(p => `${p.name || ""}:${p.value || ""}`)
+    ...properties.map(propertyToText),
+    ...noteAttributes.map(propertyToText)
   ].join(" ").toLowerCase();
 
   return text.includes(identifier);
@@ -399,11 +561,14 @@ async function buildShopifyMonthly(months) {
     const orders = await fetchShopifyOrdersForMonth(monthKey);
     const metrics = calculateShopifyMetrics(orders);
     Object.assign(months[monthKey], metrics);
+    console.log(`${monthKey}: orders=${metrics.total_orders}, upsell orders=${metrics.orders_with_upsell}, revenue=${metrics.upsell_revenue}`);
   }
 }
 
 async function main() {
   ensureDir(DOCS_DIR);
+
+  console.log(`Smile CSV files found: ${listSmileFiles().join(", ") || "(none)"}`);
 
   const months = createMonthSkeleton();
 
