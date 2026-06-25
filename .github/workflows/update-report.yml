@@ -1,0 +1,42 @@
+name: Update Upsell & Smile Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly update: every Monday at 10:00 UTC
+    - cron: "0 10 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  update-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Update report data
+        env:
+          SHOPIFY_STORE: ${{ secrets.SHOPIFY_STORE }}
+          SHOPIFY_ACCESS_TOKEN: ${{ secrets.SHOPIFY_ACCESS_TOKEN }}
+          SHOPIFY_API_VERSION: ${{ secrets.SHOPIFY_API_VERSION }}
+          UPSELL_IDENTIFIER: ${{ secrets.UPSELL_IDENTIFIER }}
+        run: npm run update
+
+      - name: Commit updated report data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add docs/report-data.json
+          git diff --cached --quiet || git commit -m "Update weekly Upsell & Smile report data"
+          git push
