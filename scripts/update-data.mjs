@@ -144,13 +144,79 @@ function parseCSV(text) {
   if (!rows.length) return [];
 
   const headers = rows[0].map(h => normalizeHeader(h));
+
   return rows.slice(1).map(values => {
+    const repairedValues = repairSmileRow(values, headers.length);
+
     const obj = {};
     headers.forEach((h, i) => {
-      obj[h] = values[i] ?? "";
+      obj[h] = repairedValues[i] ?? "";
     });
     return obj;
   });
+}
+
+function repairSmileRow(values, expectedColumnCount) {
+  /*
+   * Some Smile CSV exports come malformed like this:
+   * "June 25, 2026,0,""22,699"""
+   *
+   * Standard CSV parsing treats that entire row as ONE field because the whole row
+   * is wrapped in quotes. This function repairs those rows into:
+   * ["June 25, 2026", "0", "22,699"]
+   */
+  if (!values || values.length !== 1 || expectedColumnCount <= 1) {
+    return values;
+  }
+
+  const raw = String(values[0] || "").trim();
+
+  const dateMatch = raw.match(/^([A-Za-z]+\s+\d{1,2},\s+\d{4}),(.*)$/);
+  if (!dateMatch) {
+    return values;
+  }
+
+  const datePart = dateMatch[1];
+  const rest = dateMatch[2];
+
+  const restFields = parseCsvLine(rest);
+  const repaired = [datePart, ...restFields];
+
+  return repaired.length >= expectedColumnCount ? repaired : values;
+}
+
+function parseCsvLine(line) {
+  const values = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      field += '"';
+      i++;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      values.push(field);
+      field = "";
+      continue;
+    }
+
+    field += char;
+  }
+
+  values.push(field);
+
+  return values.map(v => String(v).trim().replace(/^"|"$/g, ""));
 }
 
 function normalizeHeader(value) {
@@ -365,8 +431,6 @@ function buildSmileMonthly(months) {
     if (sales) addToMonth(months, month, { sales_influenced: sales });
   }
 
-  // If total members report is missing but customers exists, use a fallback total base.
-  // New members still require a membership/date field; if missing, they stay 0.
   const customersRows = readSmileCsv("customers");
   if (customersRows.length) {
     const totalCustomers = customersRows.length;
