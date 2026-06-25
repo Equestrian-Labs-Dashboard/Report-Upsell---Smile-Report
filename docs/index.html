@@ -453,45 +453,91 @@
       return `${y}-${String(m).padStart(2,'0')}`;
     }
 
-    function buildKpi(label, description, field, format, suffix, months, quarterTotalFn) {
-      const monthly = {};
-      const mom = {};
-      const yoy = {};
+function buildKpi(label, description, field, format, suffix, months, quarterTotalFn) {
+  const monthly = {};
+  const mom = {};
+  const yoy = {};
 
-      months.forEach((m, i) => {
-        const current = Number(rowByMonth(m.key)[field] || 0);
-        monthly[m.key] = current;
+  months.forEach((m, i) => {
+    const current = Number(rowByMonth(m.key)[field] || 0);
+    monthly[m.key] = current;
 
-        const prevKey = i === 0 ? prevMonthKey(m.year, m.monthNumber) : months[i - 1].key;
-        const prev = Number(rowByMonth(prevKey)[field] || 0);
-        mom[m.key] = percentChange(current, prev);
+    const prevKey = i === 0 ? prevMonthKey(m.year, m.monthNumber) : months[i - 1].key;
+    const prev = Number(rowByMonth(prevKey)[field] || 0);
+    mom[m.key] = percentChange(current, prev);
 
-        const yoyKey = `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`;
-        const yoyValue = Number(rowByMonth(yoyKey)[field] || 0);
-        yoy[m.key] = percentChange(current, yoyValue);
-      });
+    const yoyKey = `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`;
+    const yoyValue = Number(rowByMonth(yoyKey)[field] || 0);
+    yoy[m.key] = percentChange(current, yoyValue);
+  });
 
-      const quarterTotal = quarterTotalFn
-        ? quarterTotalFn(months)
-        : months.reduce((sum, m) => sum + Number(rowByMonth(m.key)[field] || 0), 0);
+  const quarterTotal = quarterTotalFn
+    ? quarterTotalFn(months)
+    : months.reduce((sum, m) => sum + Number(rowByMonth(m.key)[field] || 0), 0);
 
-      const yoyMonths = months.map(m => ({
-        ...m,
-        year: m.year - 1,
-        key: `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`
-      }));
+  const previousQuarterMonthsList = previousQuarterMonths(months);
 
-      const yoyQuarterTotal = quarterTotalFn
-        ? quarterTotalFn(yoyMonths)
-        : yoyMonths.reduce((sum, m) => sum + Number(rowByMonth(m.key)[field] || 0), 0);
+  const previousQuarterTotal = quarterTotalFn
+    ? quarterTotalFn(previousQuarterMonthsList)
+    : previousQuarterMonthsList.reduce((sum, m) => {
+        return sum + Number(rowByMonth(m.key)[field] || 0);
+      }, 0);
 
-      return {
-        label, description, field, format, suffix: suffix || '',
-        monthly, mom, yoy,
-        quarterTotal,
-        quarterYoy: percentChange(quarterTotal, yoyQuarterTotal)
-      };
-    }
+  const yoyMonths = months.map(m => ({
+    ...m,
+    year: m.year - 1,
+    key: `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`
+  }));
+
+  const yoyQuarterTotal = quarterTotalFn
+    ? quarterTotalFn(yoyMonths)
+    : yoyMonths.reduce((sum, m) => {
+        return sum + Number(rowByMonth(m.key)[field] || 0);
+      }, 0);
+
+  return {
+    label,
+    description,
+    field,
+    format,
+    suffix: suffix || '',
+    monthly,
+    mom,
+    yoy,
+    quarterTotal,
+    quarterMom: percentChange(quarterTotal, previousQuarterTotal),
+    quarterYoy: percentChange(quarterTotal, yoyQuarterTotal)
+  };
+}
+
+    function previousQuarterMonths(months) {
+  const first = months[0];
+  const firstMonth = first.monthNumber;
+  let previousYear = first.year;
+  let previousMonthNumbers = [];
+
+  if (firstMonth === 1) {
+    previousYear = first.year - 1;
+    previousMonthNumbers = [10, 11, 12];
+  } else if (firstMonth === 4) {
+    previousMonthNumbers = [1, 2, 3];
+  } else if (firstMonth === 7) {
+    previousMonthNumbers = [4, 5, 6];
+  } else if (firstMonth === 10) {
+    previousMonthNumbers = [7, 8, 9];
+  }
+
+  return previousMonthNumbers.map(n => ({
+    year: previousYear,
+    monthNumber: n,
+    key: `${previousYear}-${String(n).padStart(2, '0')}`,
+    label: new Date(Date.UTC(previousYear, n - 1, 1)).toLocaleString('en-US', {
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC'
+    })
+  }));
+}
 
     function renderUpsell(months, quarter, year) {
       const kpis = [
@@ -616,7 +662,7 @@
           </div>
           <div class="compare-row grid5">
             <div class="compare-label"><span class="tag mom">MoM</span><span>vs previous month</span></div>
-            ${mom}<div class="vval"><span class="na">N/A</span></div>
+            ${mom}<div class="vval">${renderChange(kpi.quarterMom)}</div>
           </div>
           <div class="compare-row grid5">
             <div class="compare-label"><span class="tag yoy">YoY</span><span>vs same month last year</span></div>
