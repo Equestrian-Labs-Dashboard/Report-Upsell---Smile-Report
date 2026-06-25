@@ -142,6 +142,25 @@
     .panel { display: none; }
     .panel.active { display: block; }
 
+    .sec-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      margin: 35px 0 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sec-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--color-border-tertiary);
+    }
+
     .kb {
       background: white;
       border: 1px solid var(--color-border-primary);
@@ -232,6 +251,17 @@
     .pu { background: #f0fdf4; color: #166534; }
     .na { font-size: 10px; background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; }
 
+    .bench {
+      display: inline-block;
+      font-size: 11px;
+      background: #fffbeb;
+      color: #92400e;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+      border: 1px solid #fde68a;
+    }
+
     .loading {
       padding: 20px;
       text-align: center;
@@ -258,6 +288,49 @@
       color: var(--color-text-secondary);
       line-height: 1.6;
     }
+
+    .il {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .ttbl {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 15px;
+    }
+
+    .ttbl th {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      padding: 12px 10px;
+      border-bottom: 2px solid var(--color-border-primary);
+      text-align: right;
+    }
+
+    .ttbl th:first-child { text-align: left; }
+
+    .ttbl td {
+      padding: 14px 10px;
+      border-bottom: 1px solid var(--color-border-tertiary);
+      text-align: right;
+      font-size: 13px;
+    }
+
+    .ttbl td:first-child {
+      text-align: left;
+      font-weight: 500;
+    }
+
+    .ttbl tr:hover td { background: var(--color-bg-light); }
+    .hl { font-weight: 600; background: #f9fafb; }
 
     @media (max-width: 900px) {
       .w { padding: 24px; overflow-x: auto; }
@@ -402,12 +475,15 @@
         ? quarterTotalFn(months)
         : months.reduce((sum, m) => sum + Number(rowByMonth(m.key)[field] || 0), 0);
 
+      const yoyMonths = months.map(m => ({
+        ...m,
+        year: m.year - 1,
+        key: `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`
+      }));
+
       const yoyQuarterTotal = quarterTotalFn
-        ? quarterTotalFn(months.map(m => ({ ...m, year: m.year - 1, key: `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}` })))
-        : months.reduce((sum, m) => {
-            const key = `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`;
-            return sum + Number(rowByMonth(key)[field] || 0);
-          }, 0);
+        ? quarterTotalFn(yoyMonths)
+        : yoyMonths.reduce((sum, m) => sum + Number(rowByMonth(m.key)[field] || 0), 0);
 
       return {
         label, description, field, format, suffix: suffix || '',
@@ -437,36 +513,97 @@
 
       document.getElementById('upsellContent').innerHTML =
         kpis.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
-        '<div class="ins">MoM compares each month against the previous month. YoY compares against the same month in the previous year.</div>';
+        '<div class="ins"><div class="il" style="color:var(--brand-blue);">Key insight</div>MoM compares each month against the previous month. YoY compares against the same month in the previous year.</div>';
     }
 
     function renderSmile(months, quarter, year) {
-      const kpis = [
+      const members = [
         buildKpi('New Members', 'Customers who joined the program', 'new_members', 'number', '', months),
-        buildKpi('Total Customer Base', 'Cumulative loyalty members', 'total_customer_base', 'number', '', months, ms => {
-          const last = rowByMonth(ms[ms.length - 1].key);
-          return Number(last.total_customer_base || 0);
-        }),
+        buildKpi('Total Customer Base', 'Cumulative loyalty members', 'total_customer_base', 'number', '', months, ms => Number(rowByMonth(ms[ms.length - 1].key).total_customer_base || 0))
+      ];
+
+      const points = [
         buildKpi('Points Earned', 'Total points accumulated by customers', 'points_earned', 'number', '', months),
         buildKpi('Points Redeemed', 'Points used by customers to claim rewards', 'points_redeemed', 'number', '', months),
         buildKpi('Redemption Rate', '% of earned points redeemed', 'redemption_rate', 'percent', '', months, ms => {
           const earned = ms.reduce((s,m) => s + Number(rowByMonth(m.key).points_earned || 0), 0);
           const redeemed = ms.reduce((s,m) => s + Number(rowByMonth(m.key).points_redeemed || 0), 0);
           return earned ? redeemed / earned : 0;
-        }),
+        }, true)
+      ];
+
+      const sales = [
         buildKpi('Sales Influenced by Smile', 'Revenue from Smile influenced orders', 'sales_influenced', 'currency', '', months)
       ];
 
+      const trend = renderProgramTrend();
+
       document.getElementById('smileContent').innerHTML =
-        kpis.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
-        '<div class="ins">Smile data is read from CSV files in the repository and refreshed by GitHub Actions once per week.</div>';
+        '<div class="sec-label">Members</div>' +
+        members.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
+        '<div class="sec-label">Points & Redemption</div>' +
+        points.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
+        '<div class="sec-label">Sales Impact</div>' +
+        sales.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
+        '<div class="sec-label">Program trend since launch</div>' +
+        trend +
+        '<div class="ins"><div class="il" style="color:var(--brand-green);">Key insight</div>Redemption rate is the most important Smile signal. If it is low, prioritize points reminders, expiring-points messaging, and limited-time reward promos.</div>';
+    }
+
+    function renderProgramTrend() {
+      const rows = report.monthly
+        .filter(r => r.month >= '2025-09')
+        .sort((a,b) => a.month.localeCompare(b.month));
+
+      if (!rows.length) return '<div class="warning">No Smile trend data found.</div>';
+
+      return `
+        <div style="overflow-x:auto;">
+          <table class="ttbl">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>New members</th>
+                <th>Total base</th>
+                <th>Pts earned</th>
+                <th>Pts redeemed</th>
+                <th>Redeem rate</th>
+                <th>Sales influenced</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr class="${r.year === 2026 ? 'hl' : ''}">
+                  <td>${escapeHtml(r.month)}</td>
+                  <td>${formatNumber(r.new_members)}</td>
+                  <td>${formatNumber(r.total_customer_base)}</td>
+                  <td>${formatNumber(r.points_earned)}</td>
+                  <td>${formatNumber(r.points_redeemed)}</td>
+                  <td>${formatPercent(r.redemption_rate)}</td>
+                  <td>${formatCurrency(r.sales_influenced)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
     }
 
     function renderKpiCard(kpi, months, totalLabel) {
       const headers = months.map(m => `<div class="kh r">${m.label}</div>`).join('');
-      const values = months.map(m => `<div class="kv">${formatValue(kpi.monthly[m.key], kpi.format, kpi.suffix)}</div>`).join('');
+      const values = months.map(m => {
+        let extra = '';
+        if (kpi.field === 'redemption_rate') {
+          const v = Number(kpi.monthly[m.key] || 0);
+          if (v > 0 && v < 0.25) extra = ' <span class="pill pd" style="font-size:10px;">Low</span>';
+          if (v >= 0.25 && v <= 0.35) extra = ' <span class="pill pu" style="font-size:10px;">Benchmark</span>';
+        }
+        return `<div class="kv">${formatValue(kpi.monthly[m.key], kpi.format, kpi.suffix)}${extra}</div>`;
+      }).join('');
+
       const mom = months.map(m => `<div class="vval">${renderChange(kpi.mom[m.key])}</div>`).join('');
       const yoy = months.map(m => `<div class="vval">${renderChange(kpi.yoy[m.key])}</div>`).join('');
+      const bench = kpi.field === 'redemption_rate' ? '<div class="bench">Benchmark sweet spot: 25–35%</div>' : '';
 
       return `
         <div class="kb">
@@ -474,7 +611,7 @@
             <div class="kh">KPI</div>${headers}<div class="kh r">${totalLabel} Total</div>
           </div>
           <div class="kmr grid5">
-            <div><div class="kname">${escapeHtml(kpi.label)}</div><div class="kdesc">${escapeHtml(kpi.description)}</div></div>
+            <div><div class="kname">${escapeHtml(kpi.label)}</div><div class="kdesc">${escapeHtml(kpi.description)}</div>${bench}</div>
             ${values}<div class="kv">${formatValue(kpi.quarterTotal, kpi.format, kpi.suffix)}</div>
           </div>
           <div class="compare-row grid5">
