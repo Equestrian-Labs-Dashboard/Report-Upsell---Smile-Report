@@ -186,16 +186,15 @@ function parseCSV(text) {
 
 function repairSmileRow(values, expectedColumnCount) {
   /*
-   * Some Smile CSV exports come malformed with the entire row wrapped in quotes.
+   * Handles two Smile malformed CSV patterns:
    *
-   * Example 1:
+   * Pattern A - rows beginning with a date:
    * "June 25, 2026,0,""22,699"""
+   * Should become:
+   * ["June 25, 2026", "0", "22,699"]
    *
-   * Example 2:
+   * Pattern B - influenced orders, full row wrapped in quotes:
    * "Stacey,Ritala,email@example.com,153089,624.83,paid,false,code,false,points_redemption,""May 17, 2026, 12:38 AM"",Member"
-   *
-   * This repairs the row by removing the outside quotes, restoring inner quotes,
-   * and parsing the row again as CSV.
    */
   if (!values || values.length !== 1 || expectedColumnCount <= 1) {
     return values;
@@ -213,6 +212,22 @@ function repairSmileRow(values, expectedColumnCount) {
 
   raw = raw.replace(/""/g, '"');
 
+  // SPECIAL CASE:
+  // Smile metric CSVs start with an unquoted date containing a comma:
+  // June 25, 2026,0,"22,699"
+  // If we parse this normally, it becomes ["June 25", "2026", ...] and breaks.
+  const dateAtStart = raw.match(/^([A-Za-z]+\s+\d{1,2},\s+\d{4}),(.*)$/);
+
+  if (dateAtStart && expectedColumnCount <= 5) {
+    const datePart = dateAtStart[1];
+    const rest = dateAtStart[2];
+    const restFields = parseCsvLine(rest);
+    const repaired = [datePart, ...restFields];
+
+    return repaired.length >= expectedColumnCount ? repaired : values;
+  }
+
+  // Normal malformed row repair for Smile influenced orders.
   const repaired = parseCsvLine(raw);
 
   return repaired.length >= expectedColumnCount ? repaired : values;
