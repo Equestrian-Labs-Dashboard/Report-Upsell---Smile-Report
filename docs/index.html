@@ -562,68 +562,123 @@
       }));
     }
 
-    function buildKpi(label, description, field, format, suffix, months, quarterTotalFn) {
-      const monthly = {};
-      const mom = {};
-      const yoy = {};
+   function buildKpi(label, description, field, format, suffix, months, quarterTotalFn, sourceType = 'general') {
+  const monthly = {};
+  const mom = {};
+  const yoy = {};
+  const yoyAvailability = {};
 
-      months.forEach((month, index) => {
-        const current = Number(rowByMonth(month.key)[field] || 0);
+  months.forEach((month, index) => {
+    const current = Number(rowByMonth(month.key)[field] || 0);
+    monthly[month.key] = current;
 
-        monthly[month.key] = current;
+    const previousKey = index === 0
+      ? prevMonthKey(month.year, month.monthNumber)
+      : months[index - 1].key;
 
-        const previousKey = index === 0
-          ? prevMonthKey(month.year, month.monthNumber)
-          : months[index - 1].key;
+    const previous = Number(rowByMonth(previousKey)[field] || 0);
+    mom[month.key] = percentChange(current, previous);
 
-        const previous = Number(rowByMonth(previousKey)[field] || 0);
-        mom[month.key] = percentChange(current, previous);
+    const yoyKey = `${month.year - 1}-${String(month.monthNumber).padStart(2, '0')}`;
+    const yoyRow = rowByMonth(yoyKey);
+    const yoyValue = Number(yoyRow[field] || 0);
 
-        const yoyKey = `${month.year - 1}-${String(month.monthNumber).padStart(2, '0')}`;
-        const yoyValue = Number(rowByMonth(yoyKey)[field] || 0);
-        yoy[month.key] = percentChange(current, yoyValue);
-      });
+    yoyAvailability[month.key] = hasUsablePriorYearValue(yoyRow, field, sourceType);
+    yoy[month.key] = yoyAvailability[month.key] ? percentChange(current, yoyValue) : null;
+  });
 
-      const quarterTotal = quarterTotalFn
-        ? quarterTotalFn(months)
-        : months.reduce((sum, month) => {
-            return sum + Number(rowByMonth(month.key)[field] || 0);
-          }, 0);
+  const quarterTotal = quarterTotalFn
+    ? quarterTotalFn(months)
+    : months.reduce((sum, month) => {
+        return sum + Number(rowByMonth(month.key)[field] || 0);
+      }, 0);
 
-      const previousQuarter = previousQuarterMonths(months);
+  const previousQuarter = previousQuarterMonths(months);
 
-      const previousQuarterTotal = quarterTotalFn
-        ? quarterTotalFn(previousQuarter)
-        : previousQuarter.reduce((sum, month) => {
-            return sum + Number(rowByMonth(month.key)[field] || 0);
-          }, 0);
+  const previousQuarterTotal = quarterTotalFn
+    ? quarterTotalFn(previousQuarter)
+    : previousQuarter.reduce((sum, month) => {
+        return sum + Number(rowByMonth(month.key)[field] || 0);
+      }, 0);
 
-      const yoyMonths = months.map(month => ({
-        ...month,
-        year: month.year - 1,
-        key: `${month.year - 1}-${String(month.monthNumber).padStart(2, '0')}`
-      }));
+  const yoyMonths = months.map(month => ({
+    ...month,
+    year: month.year - 1,
+    key: `${month.year - 1}-${String(month.monthNumber).padStart(2, '0')}`
+  }));
 
-      const yoyQuarterTotal = quarterTotalFn
-        ? quarterTotalFn(yoyMonths)
-        : yoyMonths.reduce((sum, month) => {
-            return sum + Number(rowByMonth(month.key)[field] || 0);
-          }, 0);
+  const quarterHasPriorYear = yoyMonths.some(month => {
+    const row = rowByMonth(month.key);
+    return hasUsablePriorYearValue(row, field, sourceType);
+  });
 
-      return {
-        label,
-        description,
-        field,
-        format,
-        suffix: suffix || '',
-        monthly,
-        mom,
-        yoy,
-        quarterTotal,
-        quarterMom: percentChange(quarterTotal, previousQuarterTotal),
-        quarterYoy: percentChange(quarterTotal, yoyQuarterTotal)
-      };
-    }
+  const yoyQuarterTotal = quarterHasPriorYear
+    ? (
+        quarterTotalFn
+          ? quarterTotalFn(yoyMonths)
+          : yoyMonths.reduce((sum, month) => {
+              return sum + Number(rowByMonth(month.key)[field] || 0);
+            }, 0)
+      )
+    : 0;
+
+  return {
+    label,
+    description,
+    field,
+    format,
+    suffix: suffix || '',
+    sourceType,
+    monthly,
+    mom,
+    yoy,
+    yoyAvailability,
+    quarterTotal,
+    quarterMom: percentChange(quarterTotal, previousQuarterTotal),
+    quarterYoy: quarterHasPriorYear ? percentChange(quarterTotal, yoyQuarterTotal) : null,
+    quarterHasPriorYear
+  };
+}
+    function hasUsablePriorYearValue(row, field, sourceType) {
+  if (!row || !row.month) return false;
+
+  const value = Number(row[field] || 0);
+
+  if (sourceType !== 'smile') {
+    return value !== 0;
+  }
+
+  const smileFields = [
+    'new_members',
+    'total_customer_base',
+    'points_earned',
+    'points_redeemed',
+    'redemption_rate',
+    'sales_influenced'
+  ];
+
+  const hasAnySmileData = smileFields.some(key => Number(row[key] || 0) !== 0);
+
+  if (!hasAnySmileData) return false;
+
+  if (field === 'redemption_rate') {
+    return Number(row.points_earned || 0) > 0;
+  }
+
+  if (field === 'total_customer_base') {
+    return Number(row.total_customer_base || 0) > 0;
+  }
+
+  return value !== 0;
+}
+
+function getYoyFallbackLabel(sourceType) {
+  if (sourceType === 'smile') {
+    return 'No prior-year Smile data';
+  }
+
+  return 'N/A';
+}
 
     function renderUpsell(months, quarter, year) {
       const kpis = [
@@ -662,15 +717,15 @@
 
     function renderSmile(months, quarter, year) {
       const members = [
-        buildKpi('New Members', 'Customers who joined the program', 'new_members', 'number', '', months),
+        buildKpi('New Members', 'Customers who joined the program', 'new_members', 'number', '', months, null, 'smile'),
         buildKpi('Total Customer Base', 'Cumulative loyalty members', 'total_customer_base', 'number', '', months, monthsList => {
           return Number(rowByMonth(monthsList[monthsList.length - 1].key).total_customer_base || 0);
-        })
+        }, 'smile')
       ];
 
       const points = [
-        buildKpi('Points Earned', 'Total points accumulated by customers', 'points_earned', 'number', '', months),
-        buildKpi('Points Redeemed', 'Points used by customers to claim rewards', 'points_redeemed', 'number', '', months),
+        buildKpi('Points Earned', 'Total points accumulated by customers', 'points_earned', 'number', '', months, null, 'smile'),
+        buildKpi('Points Redeemed', 'Points used by customers to claim rewards', 'points_redeemed', 'number', '', months, null, 'smile'),
         buildKpi('Redemption Rate', '% of earned points redeemed', 'redemption_rate', 'percent', '', months, monthsList => {
           const earned = monthsList.reduce((sum, month) => {
             return sum + Number(rowByMonth(month.key).points_earned || 0);
@@ -681,23 +736,23 @@
           }, 0);
 
           return earned ? redeemed / earned : 0;
-        })
+        }, 'smile')
       ];
 
       const sales = [
-        buildKpi('Sales Influenced by Smile', 'Revenue from Smile influenced orders', 'sales_influenced', 'currency', '', months)
+        buildKpi('Sales Influenced by Smile', 'Revenue from Smile influenced orders', 'sales_influenced', 'currency', '', months, null, 'smile')
       ];
 
       document.getElementById('smileContent').innerHTML =
         '<div class="sec-label">Members</div>' +
-        members.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`, 'smile')).join('') +
+        members.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`)).join('') +
         '<div class="sec-label">Points & Redemption</div>' +
-        points.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`, 'smile')).join('') +
+        points.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`)).join('') +
         '<div class="sec-label">Sales Impact</div>' +
-        sales.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`, 'smile')).join('') +
+        sales.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`)).join('') +
         '<div class="sec-label">Program trend since launch</div>' +
         renderProgramTrend() +
-        '<div class="ins"><div class="il" style="color:var(--brand-green);">Key insight</div>Smile YoY appears only when the same month exists in the previous year. Before that, the report shows “No 2025 Smile data”.</div>';
+        '<div class="ins"><div class="il" style="color:var(--brand-green);">Key insight</div>Smile YoY is shown only when the same month exists in the previous year. If the prior-year month has no Smile data, the report shows “No prior-year Smile data”.</div>';
     }
 
     function renderProgramTrend() {
@@ -741,7 +796,9 @@
       `;
     }
 
-    function renderKpiCard(kpi, months, totalLabel, sourceType) {
+    function renderKpiCard(kpi, months, totalLabel, sourceTypeOverride) {
+      const sourceType = kpi.sourceType || sourceTypeOverride || 'general';
+
       const headers = months
         .map(month => `<div class="kh r">${month.label}</div>`)
         .join('');
@@ -768,13 +825,25 @@
         .map(month => `<div class="vval">${renderChange(kpi.mom[month.key], 'N/A')}</div>`)
         .join('');
 
-      const yoyFallback = sourceType === 'smile'
-        ? 'No 2025 Smile data'
-        : 'N/A';
+      const yoyFallback = getYoyFallbackLabel(sourceType);
 
       const yoy = months
-        .map(month => `<div class="vval">${renderChange(kpi.yoy[month.key], yoyFallback)}</div>`)
+        .map(month => {
+          const hasPriorYear = kpi.yoyAvailability
+            ? kpi.yoyAvailability[month.key]
+            : kpi.yoy[month.key] !== null && kpi.yoy[month.key] !== undefined && !isNaN(kpi.yoy[month.key]);
+
+          const fallback = sourceType === 'smile' && !hasPriorYear
+            ? yoyFallback
+            : 'N/A';
+
+          return `<div class="vval">${renderChange(kpi.yoy[month.key], fallback)}</div>`;
+        })
         .join('');
+
+      const quarterYoyFallback = sourceType === 'smile' && kpi.quarterHasPriorYear === false
+        ? yoyFallback
+        : 'N/A';
 
       const bench = kpi.field === 'redemption_rate'
         ? '<div class="bench">Benchmark sweet spot: 25–35%</div>'
@@ -813,7 +882,7 @@
               <span>vs same month last year</span>
             </div>
             ${yoy}
-            <div class="vval">${renderChange(kpi.quarterYoy, yoyFallback)}</div>
+            <div class="vval">${renderChange(kpi.quarterYoy, quarterYoyFallback)}</div>
           </div>
         </div>
       `;
