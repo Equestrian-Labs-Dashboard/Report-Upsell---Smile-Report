@@ -648,7 +648,7 @@ function buildKpi(label, description, field, format, suffix, months, quarterTota
       }).join('');
 
       const mom = months.map(m => `<div class="vval">${renderChange(kpi.mom[m.key])}</div>`).join('');
-      const yoy = months.map(m => `<div class="vval">${renderChange(kpi.yoy[m.key])}</div>`).join('');
+      const yoy = months.map(m => `<div class="vval">${renderChange(kpi.yoy[m.key], 'Pre-launch')}</div>`).join('');
       const bench = kpi.field === 'redemption_rate' ? '<div class="bench">Benchmark sweet spot: 25–35%</div>' : '';
 
       return `
@@ -666,7 +666,7 @@ function buildKpi(label, description, field, format, suffix, months, quarterTota
           </div>
           <div class="compare-row grid5">
             <div class="compare-label"><span class="tag yoy">YoY</span><span>vs same month last year</span></div>
-            ${yoy}<div class="vval">${renderChange(kpi.quarterYoy)}</div>
+            ${yoy}<div class="vval">${renderChange(kpi.quarterYoy, 'Pre-launch')}</div>
           </div>
         </div>
       `;
@@ -679,13 +679,17 @@ function buildKpi(label, description, field, format, suffix, months, quarterTota
       return (current - previous) / previous;
     }
 
-    function renderChange(value) {
-      if (value === null || value === undefined || isNaN(value)) return '<span class="na">N/A</span>';
-      const cls = value >= 0 ? 'pu' : 'pd';
-      const arrow = value >= 0 ? '↑' : '↓';
-      const sign = value >= 0 ? '+' : '-';
-      return `<span class="pill ${cls}">${arrow} ${sign}${formatPercentAbs(value)}</span>`;
-    }
+  function renderChange(value, fallbackLabel = 'N/A') {
+  if (value === null || value === undefined || isNaN(value)) {
+    return `<span class="na">${fallbackLabel}</span>`;
+  }
+
+  const cls = value >= 0 ? 'pu' : 'pd';
+  const arrow = value >= 0 ? '↑' : '↓';
+  const sign = value >= 0 ? '+' : '-';
+
+  return `<span class="pill ${cls}">${arrow} ${sign}${formatPercentAbs(value)}</span>`;
+}
 
     function formatValue(value, format, suffix) {
       if (format === 'currency') return formatCurrency(value);
