@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>CORRO - Upsell & Smile Report</title>
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Instrument+Sans:wght@300;400;500;600&display=swap');
 
@@ -17,7 +18,11 @@
       --brand-green: #0F6E56;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       background-color: #f4f4f5;
@@ -139,8 +144,13 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
 
-    .panel { display: none; }
-    .panel.active { display: block; }
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
 
     .sec-label {
       font-size: 11px;
@@ -181,7 +191,9 @@
       border-bottom: 1px solid var(--color-border-primary);
     }
 
-    .kmr { padding: 20px; }
+    .kmr {
+      padding: 20px;
+    }
 
     .kh {
       font-size: 10px;
@@ -191,7 +203,9 @@
       color: var(--color-text-tertiary);
     }
 
-    .kh.r { text-align: right; }
+    .kh.r {
+      text-align: right;
+    }
 
     .kname {
       font-size: 15px;
@@ -234,10 +248,19 @@
       letter-spacing: 0.02em;
     }
 
-    .mom { background: #eff6ff; color: #1e40af; }
-    .yoy { background: #fefce8; color: #854f0b; }
+    .mom {
+      background: #eff6ff;
+      color: #1e40af;
+    }
 
-    .vval { text-align: right; }
+    .yoy {
+      background: #fefce8;
+      color: #854f0b;
+    }
+
+    .vval {
+      text-align: right;
+    }
 
     .pill {
       font-size: 11px;
@@ -247,9 +270,25 @@
       display: inline-block;
     }
 
-    .pd { background: #fef2f2; color: #991b1b; }
-    .pu { background: #f0fdf4; color: #166534; }
-    .na { font-size: 10px; background: #f3f4f6; color: #6b7280; padding: 3px 8px; border-radius: 6px; }
+    .pd {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .pu {
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    .na {
+      font-size: 10px;
+      background: #f3f4f6;
+      color: #6b7280;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      white-space: nowrap;
+    }
 
     .bench {
       display: inline-block;
@@ -266,16 +305,6 @@
       padding: 20px;
       text-align: center;
       color: var(--color-text-tertiary);
-    }
-
-    .warning {
-      background: #fffbeb;
-      color: #92400e;
-      border: 1px solid #fde68a;
-      padding: 12px 14px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      font-size: 13px;
     }
 
     .ins {
@@ -315,7 +344,9 @@
       text-align: right;
     }
 
-    .ttbl th:first-child { text-align: left; }
+    .ttbl th:first-child {
+      text-align: left;
+    }
 
     .ttbl td {
       padding: 14px 10px;
@@ -329,15 +360,36 @@
       font-weight: 500;
     }
 
-    .ttbl tr:hover td { background: var(--color-bg-light); }
-    .hl { font-weight: 600; background: #f9fafb; }
+    .ttbl tr:hover td {
+      background: var(--color-bg-light);
+    }
+
+    .hl {
+      font-weight: 600;
+      background: #f9fafb;
+    }
 
     @media (max-width: 900px) {
-      .w { padding: 24px; overflow-x: auto; }
-      .top-bar { flex-direction: column; }
-      .filters { grid-template-columns: 1fr; }
-      .kb { min-width: 920px; }
-      .kv { font-size: 15px; }
+      .w {
+        padding: 24px;
+        overflow-x: auto;
+      }
+
+      .top-bar {
+        flex-direction: column;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .kb {
+        min-width: 920px;
+      }
+
+      .kv {
+        font-size: 15px;
+      }
     }
   </style>
 </head>
@@ -350,17 +402,20 @@
         <div class="rname">Upsell & Smile Report</div>
         <div class="rperiod" id="periodText">Loading report data...</div>
       </div>
+
       <div class="badge" id="updatedBadge">Weekly</div>
     </div>
 
     <div class="filters">
       <select id="yearFilter"></select>
+
       <select id="quarterFilter">
         <option value="Q1">Q1: Jan–Mar</option>
         <option value="Q2">Q2: Apr–Jun</option>
         <option value="Q3">Q3: Jul–Sep</option>
         <option value="Q4">Q4: Oct–Dec</option>
       </select>
+
       <button onclick="render()">Load Report</button>
     </div>
 
@@ -382,39 +437,48 @@
 
   <script>
     let report = null;
+    let activeTab = 'upsell';
 
     fetch('report-data.json?ts=' + Date.now())
-      .then(r => {
-        if (!r.ok) throw new Error('Missing report-data.json. Run the GitHub Action first.');
-        return r.json();
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Missing report-data.json. Run the GitHub Action first.');
+        }
+
+        return response.json();
       })
       .then(data => {
         report = data;
         setupFilters();
         render();
       })
-      .catch(err => {
-        document.getElementById('status').textContent = 'Error: ' + err.message;
+      .catch(error => {
+        document.getElementById('status').textContent = 'Error: ' + error.message;
       });
 
     function setupFilters() {
-      const years = [...new Set(report.monthly.map(r => r.year))]
-        .filter(y => y >= 2026)
+      const years = [...new Set(report.monthly.map(row => row.year))]
+        .filter(year => year >= 2026)
         .sort();
 
       const yearSelect = document.getElementById('yearFilter');
-      yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+      yearSelect.innerHTML = years
+        .map(year => `<option value="${year}">${year}</option>`)
+        .join('');
 
       const currentYear = Math.max(...years);
       yearSelect.value = currentYear;
 
       const currentMonth = new Date().getMonth() + 1;
-      let q = 'Q1';
-      if (currentMonth >= 4 && currentMonth <= 6) q = 'Q2';
-      if (currentMonth >= 7 && currentMonth <= 9) q = 'Q3';
-      if (currentMonth >= 10) q = 'Q4';
-      document.getElementById('quarterFilter').value = q;
 
+      let quarter = 'Q1';
+
+      if (currentMonth >= 4 && currentMonth <= 6) quarter = 'Q2';
+      if (currentMonth >= 7 && currentMonth <= 9) quarter = 'Q3';
+      if (currentMonth >= 10) quarter = 'Q4';
+
+      document.getElementById('quarterFilter').value = quarter;
       document.getElementById('updatedBadge').textContent = 'Updated ' + formatDate(report.generatedAt);
     }
 
@@ -433,124 +497,158 @@
     }
 
     function monthsForQuarter(year, quarter) {
-      const monthNumbers = { Q1: [1,2,3], Q2: [4,5,6], Q3: [7,8,9], Q4: [10,11,12] }[quarter];
-      return monthNumbers.map(n => ({
+      const monthNumbers = {
+        Q1: [1, 2, 3],
+        Q2: [4, 5, 6],
+        Q3: [7, 8, 9],
+        Q4: [10, 11, 12]
+      }[quarter];
+
+      return monthNumbers.map(number => ({
         year,
-        monthNumber: n,
-        key: `${year}-${String(n).padStart(2,'0')}`,
-        label: new Date(Date.UTC(year, n - 1, 1)).toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+        monthNumber: number,
+        key: `${year}-${String(number).padStart(2, '0')}`,
+        label: new Date(Date.UTC(year, number - 1, 1)).toLocaleString('en-US', {
+          month: 'short',
+          year: 'numeric',
+          timeZone: 'UTC'
+        })
       }));
     }
 
     function rowByMonth(key) {
-      return report.monthly.find(r => r.month === key) || {};
+      return report.monthly.find(row => row.month === key) || {};
     }
 
     function prevMonthKey(year, monthNumber) {
-      let y = year;
-      let m = monthNumber - 1;
-      if (m === 0) { y -= 1; m = 12; }
-      return `${y}-${String(m).padStart(2,'0')}`;
+      let previousYear = year;
+      let previousMonth = monthNumber - 1;
+
+      if (previousMonth === 0) {
+        previousYear = year - 1;
+        previousMonth = 12;
+      }
+
+      return `${previousYear}-${String(previousMonth).padStart(2, '0')}`;
     }
 
-function buildKpi(label, description, field, format, suffix, months, quarterTotalFn) {
-  const monthly = {};
-  const mom = {};
-  const yoy = {};
-
-  months.forEach((m, i) => {
-    const current = Number(rowByMonth(m.key)[field] || 0);
-    monthly[m.key] = current;
-
-    const prevKey = i === 0 ? prevMonthKey(m.year, m.monthNumber) : months[i - 1].key;
-    const prev = Number(rowByMonth(prevKey)[field] || 0);
-    mom[m.key] = percentChange(current, prev);
-
-    const yoyKey = `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`;
-    const yoyValue = Number(rowByMonth(yoyKey)[field] || 0);
-    yoy[m.key] = percentChange(current, yoyValue);
-  });
-
-  const quarterTotal = quarterTotalFn
-    ? quarterTotalFn(months)
-    : months.reduce((sum, m) => sum + Number(rowByMonth(m.key)[field] || 0), 0);
-
-  const previousQuarterMonthsList = previousQuarterMonths(months);
-
-  const previousQuarterTotal = quarterTotalFn
-    ? quarterTotalFn(previousQuarterMonthsList)
-    : previousQuarterMonthsList.reduce((sum, m) => {
-        return sum + Number(rowByMonth(m.key)[field] || 0);
-      }, 0);
-
-  const yoyMonths = months.map(m => ({
-    ...m,
-    year: m.year - 1,
-    key: `${m.year - 1}-${String(m.monthNumber).padStart(2,'0')}`
-  }));
-
-  const yoyQuarterTotal = quarterTotalFn
-    ? quarterTotalFn(yoyMonths)
-    : yoyMonths.reduce((sum, m) => {
-        return sum + Number(rowByMonth(m.key)[field] || 0);
-      }, 0);
-
-  return {
-    label,
-    description,
-    field,
-    format,
-    suffix: suffix || '',
-    monthly,
-    mom,
-    yoy,
-    quarterTotal,
-    quarterMom: percentChange(quarterTotal, previousQuarterTotal),
-    quarterYoy: percentChange(quarterTotal, yoyQuarterTotal)
-  };
-}
-
     function previousQuarterMonths(months) {
-  const first = months[0];
-  const firstMonth = first.monthNumber;
-  let previousYear = first.year;
-  let previousMonthNumbers = [];
+      const first = months[0];
+      const firstMonth = first.monthNumber;
 
-  if (firstMonth === 1) {
-    previousYear = first.year - 1;
-    previousMonthNumbers = [10, 11, 12];
-  } else if (firstMonth === 4) {
-    previousMonthNumbers = [1, 2, 3];
-  } else if (firstMonth === 7) {
-    previousMonthNumbers = [4, 5, 6];
-  } else if (firstMonth === 10) {
-    previousMonthNumbers = [7, 8, 9];
-  }
+      let previousYear = first.year;
+      let previousMonthNumbers = [];
 
-  return previousMonthNumbers.map(n => ({
-    year: previousYear,
-    monthNumber: n,
-    key: `${previousYear}-${String(n).padStart(2, '0')}`,
-    label: new Date(Date.UTC(previousYear, n - 1, 1)).toLocaleString('en-US', {
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC'
-    })
-  }));
-}
+      if (firstMonth === 1) {
+        previousYear = first.year - 1;
+        previousMonthNumbers = [10, 11, 12];
+      } else if (firstMonth === 4) {
+        previousMonthNumbers = [1, 2, 3];
+      } else if (firstMonth === 7) {
+        previousMonthNumbers = [4, 5, 6];
+      } else if (firstMonth === 10) {
+        previousMonthNumbers = [7, 8, 9];
+      }
+
+      return previousMonthNumbers.map(number => ({
+        year: previousYear,
+        monthNumber: number,
+        key: `${previousYear}-${String(number).padStart(2, '0')}`,
+        label: new Date(Date.UTC(previousYear, number - 1, 1)).toLocaleString('en-US', {
+          month: 'short',
+          year: 'numeric',
+          timeZone: 'UTC'
+        })
+      }));
+    }
+
+    function buildKpi(label, description, field, format, suffix, months, quarterTotalFn) {
+      const monthly = {};
+      const mom = {};
+      const yoy = {};
+
+      months.forEach((month, index) => {
+        const current = Number(rowByMonth(month.key)[field] || 0);
+
+        monthly[month.key] = current;
+
+        const previousKey = index === 0
+          ? prevMonthKey(month.year, month.monthNumber)
+          : months[index - 1].key;
+
+        const previous = Number(rowByMonth(previousKey)[field] || 0);
+        mom[month.key] = percentChange(current, previous);
+
+        const yoyKey = `${month.year - 1}-${String(month.monthNumber).padStart(2, '0')}`;
+        const yoyValue = Number(rowByMonth(yoyKey)[field] || 0);
+        yoy[month.key] = percentChange(current, yoyValue);
+      });
+
+      const quarterTotal = quarterTotalFn
+        ? quarterTotalFn(months)
+        : months.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key)[field] || 0);
+          }, 0);
+
+      const previousQuarter = previousQuarterMonths(months);
+
+      const previousQuarterTotal = quarterTotalFn
+        ? quarterTotalFn(previousQuarter)
+        : previousQuarter.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key)[field] || 0);
+          }, 0);
+
+      const yoyMonths = months.map(month => ({
+        ...month,
+        year: month.year - 1,
+        key: `${month.year - 1}-${String(month.monthNumber).padStart(2, '0')}`
+      }));
+
+      const yoyQuarterTotal = quarterTotalFn
+        ? quarterTotalFn(yoyMonths)
+        : yoyMonths.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key)[field] || 0);
+          }, 0);
+
+      return {
+        label,
+        description,
+        field,
+        format,
+        suffix: suffix || '',
+        monthly,
+        mom,
+        yoy,
+        quarterTotal,
+        quarterMom: percentChange(quarterTotal, previousQuarterTotal),
+        quarterYoy: percentChange(quarterTotal, yoyQuarterTotal)
+      };
+    }
 
     function renderUpsell(months, quarter, year) {
       const kpis = [
         buildKpi('Upsell Revenue', 'Total USD generated by upsell', 'upsell_revenue', 'currency', '', months),
         buildKpi('Items Sold (Upsell)', 'Products sold via upsell offer', 'upsell_items', 'number', ' pcs', months),
-        buildKpi('Conversion Rate', '% of orders where upsell was accepted', 'conversion_rate', 'percent', '', months, ms => {
-          const orders = ms.reduce((s,m) => s + Number(rowByMonth(m.key).total_orders || 0), 0);
-          const withUpsell = ms.reduce((s,m) => s + Number(rowByMonth(m.key).orders_with_upsell || 0), 0);
+        buildKpi('Conversion Rate', '% of orders where upsell was accepted', 'conversion_rate', 'percent', '', months, monthsList => {
+          const orders = monthsList.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key).total_orders || 0);
+          }, 0);
+
+          const withUpsell = monthsList.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key).orders_with_upsell || 0);
+          }, 0);
+
           return orders ? withUpsell / orders : 0;
         }),
-        buildKpi('Avg. Upsell Value', 'Average USD per upsell item sold', 'average_upsell_value', 'currency', '', months, ms => {
-          const revenue = ms.reduce((s,m) => s + Number(rowByMonth(m.key).upsell_revenue || 0), 0);
-          const items = ms.reduce((s,m) => s + Number(rowByMonth(m.key).upsell_items || 0), 0);
+        buildKpi('Avg. Upsell Value', 'Average USD per upsell item sold', 'average_upsell_value', 'currency', '', months, monthsList => {
+          const revenue = monthsList.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key).upsell_revenue || 0);
+          }, 0);
+
+          const items = monthsList.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key).upsell_items || 0);
+          }, 0);
+
           return items ? revenue / items : 0;
         }),
         buildKpi('Total Orders Processed', 'All store orders — base for conversion rate', 'total_orders', 'number', '', months),
@@ -558,50 +656,58 @@ function buildKpi(label, description, field, format, suffix, months, quarterTota
       ];
 
       document.getElementById('upsellContent').innerHTML =
-        kpis.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
+        kpis.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`, 'upsell')).join('') +
         '<div class="ins"><div class="il" style="color:var(--brand-blue);">Key insight</div>MoM compares each month against the previous month. YoY compares against the same month in the previous year.</div>';
     }
 
     function renderSmile(months, quarter, year) {
       const members = [
         buildKpi('New Members', 'Customers who joined the program', 'new_members', 'number', '', months),
-        buildKpi('Total Customer Base', 'Cumulative loyalty members', 'total_customer_base', 'number', '', months, ms => Number(rowByMonth(ms[ms.length - 1].key).total_customer_base || 0))
+        buildKpi('Total Customer Base', 'Cumulative loyalty members', 'total_customer_base', 'number', '', months, monthsList => {
+          return Number(rowByMonth(monthsList[monthsList.length - 1].key).total_customer_base || 0);
+        })
       ];
 
       const points = [
         buildKpi('Points Earned', 'Total points accumulated by customers', 'points_earned', 'number', '', months),
         buildKpi('Points Redeemed', 'Points used by customers to claim rewards', 'points_redeemed', 'number', '', months),
-        buildKpi('Redemption Rate', '% of earned points redeemed', 'redemption_rate', 'percent', '', months, ms => {
-          const earned = ms.reduce((s,m) => s + Number(rowByMonth(m.key).points_earned || 0), 0);
-          const redeemed = ms.reduce((s,m) => s + Number(rowByMonth(m.key).points_redeemed || 0), 0);
+        buildKpi('Redemption Rate', '% of earned points redeemed', 'redemption_rate', 'percent', '', months, monthsList => {
+          const earned = monthsList.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key).points_earned || 0);
+          }, 0);
+
+          const redeemed = monthsList.reduce((sum, month) => {
+            return sum + Number(rowByMonth(month.key).points_redeemed || 0);
+          }, 0);
+
           return earned ? redeemed / earned : 0;
-        }, true)
+        })
       ];
 
       const sales = [
         buildKpi('Sales Influenced by Smile', 'Revenue from Smile influenced orders', 'sales_influenced', 'currency', '', months)
       ];
 
-      const trend = renderProgramTrend();
-
       document.getElementById('smileContent').innerHTML =
         '<div class="sec-label">Members</div>' +
-        members.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
+        members.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`, 'smile')).join('') +
         '<div class="sec-label">Points & Redemption</div>' +
-        points.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
+        points.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`, 'smile')).join('') +
         '<div class="sec-label">Sales Impact</div>' +
-        sales.map(k => renderKpiCard(k, months, `${quarter} ${year}`)).join('') +
+        sales.map(kpi => renderKpiCard(kpi, months, `${quarter} ${year}`, 'smile')).join('') +
         '<div class="sec-label">Program trend since launch</div>' +
-        trend +
-        '<div class="ins"><div class="il" style="color:var(--brand-green);">Key insight</div>Redemption rate is the most important Smile signal. If it is low, prioritize points reminders, expiring-points messaging, and limited-time reward promos.</div>';
+        renderProgramTrend() +
+        '<div class="ins"><div class="il" style="color:var(--brand-green);">Key insight</div>Smile YoY appears only when the same month exists in the previous year. Before that, the report shows “No 2025 Smile data”.</div>';
     }
 
     function renderProgramTrend() {
       const rows = report.monthly
-        .filter(r => r.month >= '2025-09')
-        .sort((a,b) => a.month.localeCompare(b.month));
+        .filter(row => row.month >= '2025-09')
+        .sort((a, b) => a.month.localeCompare(b.month));
 
-      if (!rows.length) return '<div class="warning">No Smile trend data found.</div>';
+      if (!rows.length) {
+        return '<div class="ins">No Smile trend data found.</div>';
+      }
 
       return `
         <div style="overflow-x:auto;">
@@ -618,15 +724,15 @@ function buildKpi(label, description, field, format, suffix, months, quarterTota
               </tr>
             </thead>
             <tbody>
-              ${rows.map(r => `
-                <tr class="${r.year === 2026 ? 'hl' : ''}">
-                  <td>${escapeHtml(r.month)}</td>
-                  <td>${formatNumber(r.new_members)}</td>
-                  <td>${formatNumber(r.total_customer_base)}</td>
-                  <td>${formatNumber(r.points_earned)}</td>
-                  <td>${formatNumber(r.points_redeemed)}</td>
-                  <td>${formatPercent(r.redemption_rate)}</td>
-                  <td>${formatCurrency(r.sales_influenced)}</td>
+              ${rows.map(row => `
+                <tr class="${row.year === 2026 ? 'hl' : ''}">
+                  <td>${escapeHtml(row.month)}</td>
+                  <td>${formatNumber(row.new_members)}</td>
+                  <td>${formatNumber(row.total_customer_base)}</td>
+                  <td>${formatNumber(row.points_earned)}</td>
+                  <td>${formatNumber(row.points_redeemed)}</td>
+                  <td>${formatPercent(row.redemption_rate)}</td>
+                  <td>${formatCurrency(row.sales_influenced)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -635,38 +741,79 @@ function buildKpi(label, description, field, format, suffix, months, quarterTota
       `;
     }
 
-    function renderKpiCard(kpi, months, totalLabel) {
-      const headers = months.map(m => `<div class="kh r">${m.label}</div>`).join('');
-      const values = months.map(m => {
+    function renderKpiCard(kpi, months, totalLabel, sourceType) {
+      const headers = months
+        .map(month => `<div class="kh r">${month.label}</div>`)
+        .join('');
+
+      const values = months.map(month => {
         let extra = '';
+
         if (kpi.field === 'redemption_rate') {
-          const v = Number(kpi.monthly[m.key] || 0);
-          if (v > 0 && v < 0.25) extra = ' <span class="pill pd" style="font-size:10px;">Low</span>';
-          if (v >= 0.25 && v <= 0.35) extra = ' <span class="pill pu" style="font-size:10px;">Benchmark</span>';
+          const value = Number(kpi.monthly[month.key] || 0);
+
+          if (value > 0 && value < 0.25) {
+            extra = ' <span class="pill pd" style="font-size:10px;">Low</span>';
+          }
+
+          if (value >= 0.25 && value <= 0.35) {
+            extra = ' <span class="pill pu" style="font-size:10px;">Benchmark</span>';
+          }
         }
-        return `<div class="kv">${formatValue(kpi.monthly[m.key], kpi.format, kpi.suffix)}${extra}</div>`;
+
+        return `<div class="kv">${formatValue(kpi.monthly[month.key], kpi.format, kpi.suffix)}${extra}</div>`;
       }).join('');
 
-      const mom = months.map(m => `<div class="vval">${renderChange(kpi.mom[m.key])}</div>`).join('');
-      const yoy = months.map(m => `<div class="vval">${renderChange(kpi.yoy[m.key], 'Pre-launch')}</div>`).join('');
-      const bench = kpi.field === 'redemption_rate' ? '<div class="bench">Benchmark sweet spot: 25–35%</div>' : '';
+      const mom = months
+        .map(month => `<div class="vval">${renderChange(kpi.mom[month.key], 'N/A')}</div>`)
+        .join('');
+
+      const yoyFallback = sourceType === 'smile'
+        ? 'No 2025 Smile data'
+        : 'N/A';
+
+      const yoy = months
+        .map(month => `<div class="vval">${renderChange(kpi.yoy[month.key], yoyFallback)}</div>`)
+        .join('');
+
+      const bench = kpi.field === 'redemption_rate'
+        ? '<div class="bench">Benchmark sweet spot: 25–35%</div>'
+        : '';
 
       return `
         <div class="kb">
           <div class="kbh grid5">
-            <div class="kh">KPI</div>${headers}<div class="kh r">${totalLabel} Total</div>
+            <div class="kh">KPI</div>
+            ${headers}
+            <div class="kh r">${totalLabel} Total</div>
           </div>
+
           <div class="kmr grid5">
-            <div><div class="kname">${escapeHtml(kpi.label)}</div><div class="kdesc">${escapeHtml(kpi.description)}</div>${bench}</div>
-            ${values}<div class="kv">${formatValue(kpi.quarterTotal, kpi.format, kpi.suffix)}</div>
+            <div>
+              <div class="kname">${escapeHtml(kpi.label)}</div>
+              <div class="kdesc">${escapeHtml(kpi.description)}</div>
+              ${bench}
+            </div>
+            ${values}
+            <div class="kv">${formatValue(kpi.quarterTotal, kpi.format, kpi.suffix)}</div>
           </div>
+
           <div class="compare-row grid5">
-            <div class="compare-label"><span class="tag mom">MoM</span><span>vs previous month</span></div>
-            ${mom}<div class="vval">${renderChange(kpi.quarterMom)}</div>
+            <div class="compare-label">
+              <span class="tag mom">MoM</span>
+              <span>vs previous month / previous quarter</span>
+            </div>
+            ${mom}
+            <div class="vval">${renderChange(kpi.quarterMom, 'N/A')}</div>
           </div>
+
           <div class="compare-row grid5">
-            <div class="compare-label"><span class="tag yoy">YoY</span><span>vs same month last year</span></div>
-            ${yoy}<div class="vval">${renderChange(kpi.quarterYoy, 'Pre-launch')}</div>
+            <div class="compare-label">
+              <span class="tag yoy">YoY</span>
+              <span>vs same month last year</span>
+            </div>
+            ${yoy}
+            <div class="vval">${renderChange(kpi.quarterYoy, yoyFallback)}</div>
           </div>
         </div>
       `;
@@ -675,53 +822,79 @@ function buildKpi(label, description, field, format, suffix, months, quarterTota
     function percentChange(current, previous) {
       current = Number(current || 0);
       previous = Number(previous || 0);
+
       if (!previous) return null;
+
       return (current - previous) / previous;
     }
 
-  function renderChange(value, fallbackLabel = 'N/A') {
-  if (value === null || value === undefined || isNaN(value)) {
-    return `<span class="na">${fallbackLabel}</span>`;
-  }
+    function renderChange(value, fallbackLabel = 'N/A') {
+      if (value === null || value === undefined || isNaN(value)) {
+        return `<span class="na">${fallbackLabel}</span>`;
+      }
 
-  const cls = value >= 0 ? 'pu' : 'pd';
-  const arrow = value >= 0 ? '↑' : '↓';
-  const sign = value >= 0 ? '+' : '-';
+      const cls = value >= 0 ? 'pu' : 'pd';
+      const arrow = value >= 0 ? '↑' : '↓';
+      const sign = value >= 0 ? '+' : '-';
 
-  return `<span class="pill ${cls}">${arrow} ${sign}${formatPercentAbs(value)}</span>`;
-}
+      return `<span class="pill ${cls}">${arrow} ${sign}${formatPercentAbs(value)}</span>`;
+    }
 
     function formatValue(value, format, suffix) {
       if (format === 'currency') return formatCurrency(value);
       if (format === 'percent') return formatPercent(value);
+
       return formatNumber(value) + (suffix || '');
     }
 
     function formatCurrency(value) {
-      const n = Number(value || 0);
-      const hasCents = Math.abs(n % 1) > 0.004;
-      return '$' + n.toLocaleString('en-US', { minimumFractionDigits: hasCents ? 2 : 0, maximumFractionDigits: 2 });
+      const number = Number(value || 0);
+      const hasCents = Math.abs(number % 1) > 0.004;
+
+      return '$' + number.toLocaleString('en-US', {
+        minimumFractionDigits: hasCents ? 2 : 0,
+        maximumFractionDigits: 2
+      });
     }
 
     function formatNumber(value) {
-      return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      return Number(value || 0).toLocaleString('en-US', {
+        maximumFractionDigits: 0
+      });
     }
 
     function formatPercent(value) {
-      return (Number(value || 0) * 100).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+      return (Number(value || 0) * 100).toLocaleString('en-US', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      }) + '%';
     }
 
     function formatPercentAbs(value) {
-      return Math.abs(Number(value || 0) * 100).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+      return Math.abs(Number(value || 0) * 100).toLocaleString('en-US', {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      }) + '%';
     }
 
     function formatDate(value) {
-      return new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return new Date(value).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
     }
 
     function switchTab(name) {
-      document.querySelectorAll('.tab').forEach((tab, index) => tab.classList.toggle('active', ['upsell', 'smile'][index] === name));
-      document.querySelectorAll('.panel').forEach(panel => panel.classList.toggle('active', panel.id === 'panel-' + name));
+      activeTab = name;
+
+      document.querySelectorAll('.tab').forEach((tab, index) => {
+        tab.classList.toggle('active', ['upsell', 'smile'][index] === name);
+      });
+
+      document.querySelectorAll('.panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'panel-' + name);
+      });
     }
 
     function escapeHtml(value) {
