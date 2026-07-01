@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-01T02:49:14.296Z",
+  "generatedAt": "2026-07-01T03:23:03.230Z",
   "source": {
     "shopify": "Shopify Admin API",
     "smile": "CSV files in data/smile"
@@ -315,7 +315,7 @@
       "year": 2026,
       "quarter": "Q3",
       "month": "2026-07",
-      "total_orders": 1,
+      "total_orders": 2,
       "orders_with_upsell": 0,
       "upsell_revenue": 0,
       "upsell_items": 0,
