@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-20T12:25:22.762Z",
+  "generatedAt": "2026-07-27T13:02:04.154Z",
   "source": {
     "shopify": "Shopify Admin API",
     "smile": "CSV files in data/smile"
@@ -315,11 +315,11 @@
       "year": 2026,
       "quarter": "Q3",
       "month": "2026-07",
-      "total_orders": 341,
+      "total_orders": 469,
       "orders_with_upsell": 15,
       "upsell_revenue": 553.04,
       "upsell_items": 17,
-      "conversion_rate": 0.04398826979472141,
+      "conversion_rate": 0.031982942430703626,
       "average_upsell_value": 32.53176470588236,
       "new_members": 0,
       "total_customer_base": 0,
