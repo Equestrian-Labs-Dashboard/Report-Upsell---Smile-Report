@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-03T13:01:51.022Z",
+  "generatedAt": "2026-08-05T06:19:37.944Z",
   "source": {
     "shopify": "Shopify Admin API",
     "smile": "CSV files in data/smile"
@@ -304,11 +304,11 @@
       "upsell_items": 19,
       "conversion_rate": 0.03896103896103896,
       "average_upsell_value": 26.87421052631579,
-      "new_members": 326,
-      "total_customer_base": 22723,
-      "points_earned": 42361,
+      "new_members": 334,
+      "total_customer_base": 22727,
+      "points_earned": 42541,
       "points_redeemed": 3000,
-      "redemption_rate": 0.07081985788815184,
+      "redemption_rate": 0.07052020403845702,
       "sales_influenced": 0
     },
     {
@@ -321,26 +321,26 @@
       "upsell_items": 20,
       "conversion_rate": 0.03207547169811321,
       "average_upsell_value": 30.150500000000005,
-      "new_members": 0,
-      "total_customer_base": 0,
-      "points_earned": 0,
-      "points_redeemed": 0,
-      "redemption_rate": 0,
-      "sales_influenced": 0
+      "new_members": 446,
+      "total_customer_base": 22970,
+      "points_earned": 46995,
+      "points_redeemed": 3100,
+      "redemption_rate": 0.06596446430471327,
+      "sales_influenced": 22.39
     },
     {
       "year": 2026,
       "quarter": "Q3",
       "month": "2026-08",
-      "total_orders": 42,
+      "total_orders": 62,
       "orders_with_upsell": 1,
       "upsell_revenue": 16.99,
       "upsell_items": 1,
-      "conversion_rate": 0.023809523809523808,
+      "conversion_rate": 0.016129032258064516,
       "average_upsell_value": 16.99,
-      "new_members": 0,
+      "new_members": 55,
       "total_customer_base": 0,
-      "points_earned": 0,
+      "points_earned": 3161,
       "points_redeemed": 0,
       "redemption_rate": 0,
       "sales_influenced": 0
