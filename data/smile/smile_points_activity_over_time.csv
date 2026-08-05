@@ -1,5 +1,7 @@
-Date,Points earned,Points redeemed,Points refunded,Points expired,Manual adjustment,Net points volume
-"June 1, 2026","42,361","-3,000","-1,534",0,0,"37,827"
+﻿Date,Points earned,Points redeemed,Points refunded,Points expired,Manual adjustment,Net points change
+"August 1, 2026","3,161",0,-3,0,0,"3,158"
+"July 1, 2026","46,995","-3,100","-4,398",0,0,"39,497"
+"June 1, 2026","42,541","-3,000","-1,719",0,0,"37,822"
 "May 1, 2026","50,639","-1,700","-1,206",0,0,"47,733"
 "April 1, 2026","63,672",-400,"-1,980",0,0,"61,292"
 "March 1, 2026","50,632","-1,300",-858,0,0,"48,474"

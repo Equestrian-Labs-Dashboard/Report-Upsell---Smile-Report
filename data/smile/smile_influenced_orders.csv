@@ -1,4 +1,5 @@
-First name,Last name,Email,Order number,Grand total,Payment status,Is POS,Discount codes,Was placed by referred customer,Smile discount code type,Placed at,Membership status
+﻿First name,Last name,Email,Order number,Grand total,Payment status,Is POS,Discount codes,Was placed by referred customer,Smile discount code type,Placed at,Membership status
+Robert,Gilbert,rgilbert1924@yahoo.com,153951,22.39,paid,false,FREESHIPPING0d391a65c593,false,points_redemption,"July 14, 2026, 3:46 PM",Memeber
 Stacey,Ritala,stacey.rdh2@comcast.net,153089,624.83,paid,false,LOYALTY9ee65a382a35,false,points_redemption,"May 17, 2026, 12:38 AM",Memeber
 Erin,Pullen,big.eventing@gmail.com,153058,170.56,paid,false,8eff84764d4f,false,points_redemption,"May 14, 2026, 9:58 AM",Memeber
 Connie,Sizemore,connie0111@msn.com,152770,309.98,paid,false,LOYALTY491d5dce64a0,false,points_redemption,"April 28, 2026, 12:46 PM",Memeber
